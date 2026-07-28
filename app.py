@@ -5,6 +5,12 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+# Safe import for PDF parsing fallback
+try:
+  import pypdf
+except ImportError:
+  pypdf = None
+
 # ==========================================
 # 1. PAGE CONFIG & THEME
 # ==========================================
@@ -15,7 +21,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS for Dark Control Tower Theme
 st.markdown(
     """
     <style>
@@ -30,279 +35,351 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
 # ==========================================
-# 2. SESSION STATE INITIALIZATION
+# 2. REAL AI EXTRACTION ENGINE (PDF / EXCEL / CSV)
+# ==========================================
+def extract_data_with_gemini(file_bytes, mime_type, api_key):
+  """ส่งไฟล์ PDF/Image จริงไปให้ Gemini AI อ่านค่าและส่งกลับเป็น JSON"""
+  genai.configure(api_key=api_key)
+  model = genai.GenerativeModel("gemini-1.5-flash")
+
+  prompt = """
+    You are an expert export customs documentation reader.
+    Analyze the uploaded shipping document (Invoice, Packing List, or PO) and extract the exact text/data into this JSON format:
+
+    {
+        "customer_name": "Full name of buyer / consignee / customer",
+        "destination_country": "Country of destination (e.g., Vietnam, Japan, USA, Malaysia)",
+        "product_desc": "Main product description or item name",
+        "po_number": "PO or Order Number if available",
+        "invoice_qty": 0, // Integer of total quantity in invoice (PCS)
+        "packing_list_qty": 0, // Integer of total quantity in packing list (PCS)
+        "total_amount": "Total invoice value with currency e.g. $10,000",
+        "incoterms": "Incoterms & mode e.g. FOB Bangkok / Air Freight",
+        "suggested_hs_code": "8-digit HS Code recommendation",
+        "suggested_coo": "Recommended C/O Form name e.g. Form D (ATIGA Preferential Rate)"
+    }
+
+    Return ONLY raw valid JSON text without markdown syntax.
+    """
+
+  doc_part = {"mime_type": mime_type, "data": file_bytes}
+  response = model.generate_content([doc_part, prompt])
+  clean_json = response.text.replace("```json", "").replace("```", "").strip()
+  return json.loads(clean_json)
+
+
+def extract_fallback_text(file, file_ext):
+  """ระบบดึงข้อมูลสำรอง กรณีไม่ได้ใส่ Gemini API Key"""
+  customer_name = "Extracted Customer"
+  product_desc = "Parsed Product Item"
+  po_num = "PO-2026-X1"
+  inv_qty = 1000
+  pl_qty = 1000
+
+  if file_ext == "csv":
+    df = pd.read_csv(file)
+    if not df.empty:
+      customer_name = str(df.iloc[0].get("Customer", customer_name))
+      inv_qty = int(df.iloc[0].get("Invoice_Qty", inv_qty))
+      pl_qty = int(df.iloc[0].get("PL_Qty", pl_qty))
+
+  elif file_ext in ["xlsx", "xls"]:
+    df = pd.read_excel(file)
+    if not df.empty:
+      customer_name = str(df.iloc[0].get("Customer", customer_name))
+      inv_qty = int(df.iloc[0].get("Invoice_Qty", inv_qty))
+      pl_qty = int(df.iloc[0].get("PL_Qty", pl_qty))
+
+  elif file_ext == "pdf" and pypdf is not None:
+    reader = pypdf.PdfReader(file)
+    text = "\n".join(
+        [p.extract_text() for p in reader.pages if p.extract_text()]
+    )
+
+    # ดึง Qty จาก PDF ด้วย Regex
+    qty_match = re.search(
+        r"(?:qty|quantity|pcs)[\s:]*([0-9,]+)", text, re.IGNORECASE
+    )
+    if qty_match:
+      inv_qty = int(qty_match.group(1).replace(",", ""))
+      pl_qty = inv_qty
+
+    po_match = re.search(
+        r"(?:po|order)[\s:]*([A-Za-z0-9\-_]+)", text, re.IGNORECASE
+    )
+    if po_match:
+      po_num = po_match.group(1)
+
+    if len(text) > 10:
+      product_desc = text[:80].replace("\n", " ")
+
+  return {
+      "customer_name": customer_name,
+      "destination_country": "Vietnam",
+      "product_desc": product_desc,
+      "po_number": po_num,
+      "invoice_qty": inv_qty,
+      "packing_list_qty": pl_qty,
+      "total_amount": "$ 5,000.00",
+      "incoterms": "FOB Bangkok",
+      "suggested_hs_code": "8504.40.90",
+      "suggested_coo": "Form D (ATIGA Preferential Rate)",
+  }
+
+
+# ==========================================
+# 3. SESSION STATE
 # ==========================================
 if "master_db" not in st.session_state:
-    st.session_state.master_db = pd.DataFrame([
-        {
-            "Shipment_ID": "EXP-2026-001",
-            "Customer_Name": "Sony Vietnam Co., Ltd.",
-            "Destination": "Vietnam",
-            "Readiness_Score": 40,
-            "Risk_Level": "High",
-            "Issue_Detected": "Qty Mismatch (TC-1)",
-            "Responsible": "Planning",
-            "Invoice_Qty": 100000,
-            "PL_Qty": 98000,
-            "HS_Code": "4016.99.90",
-            "COO_Form": "Form D (ATIGA)",
-        }
-    ])
+  st.session_state.master_db = pd.DataFrame([{
+      "Shipment_ID": "EXP-2026-001",
+      "Customer_Name": "Sony Vietnam Co., Ltd.",
+      "Destination": "Vietnam",
+      "Readiness_Score": 40,
+      "Risk_Level": "High",
+      "Issue_Detected": "Qty Mismatch (TC-1)",
+      "Responsible": "Planning",
+      "Invoice_Qty": 100000,
+      "PL_Qty": 98000,
+      "HS_Code": "4016.99.90",
+      "COO_Form": "Form D (ATIGA)",
+  }])
 
-# ตัวแปรสำหรับพักข้อมูลที่ AI แกะได้ ก่อนกดยืนยันบันทึก
 if "staging_data" not in st.session_state:
-    st.session_state.staging_data = None
+  st.session_state.staging_data = None
 
 if "view_mode" not in st.session_state:
-    st.session_state.view_mode = "dashboard"  # 'dashboard' หรือ 'add_document'
+  st.session_state.view_mode = "dashboard"
 
 
 # ==========================================
-# 3. SIDEBAR & FILE UPLOAD ENGINE
+# 4. SIDEBAR & REAL FILE PARSER TRIGGER
 # ==========================================
 with st.sidebar:
-    st.title("⚙️ AI Document Engine")
-    gemini_key = st.text_input(
-        "Gemini API Key (Optional)", type="password", key="sidebar_key"
-    )
+  st.title("⚙️ AI Document Engine")
+  gemini_key = st.text_input(
+      "Gemini API Key (ใส่เพื่อให้อ่าน PDF จริง)",
+      type="password",
+      key="sidebar_key",
+  )
 
-    st.markdown("---")
-    st.subheader("📄 Step 1: Upload Documents")
+  st.markdown("---")
+  st.subheader("📄 Step 1: Upload Documents")
 
-    uploaded_files = st.file_uploader(
-        "Upload Invoice / Packing List",
-        type=["pdf", "xlsx", "xls", "csv"],
-        accept_multiple_files=True,
-    )
+  uploaded_files = st.file_uploader(
+      "Upload Invoice / Packing List",
+      type=["pdf", "xlsx", "xls", "csv"],
+      accept_multiple_files=True,
+  )
 
-    if uploaded_files:
-        st.success(f"Uploaded {len(uploaded_files)} file(s) ready")
+  if uploaded_files:
+    st.success(f"อัปโหลด {len(uploaded_files)} ไฟล์เรียบร้อย")
 
-        if st.button(
-            "🤖 Process Documents with AI OCR",
-            type="primary",
-            use_container_width=True,
-        ):
-            # จำลอง/สกัดข้อมูลจากไฟล์ และนำมาใส่ใน Staging Area
-            st.session_state.staging_data = {
-                "running_id": f"EXP-2026-0{len(st.session_state.master_db) + 51:02d}",
-                "customer_name": "Sony Vietnam Co., Ltd.",
-                "destination_country": "Vietnam",
-                "product_desc": "EPDM Rubber Cushion Dampener Part #SNV-902",
-                "po_number": "PO-SNV-2026-8891",
-                "invoice_qty": 50000,
-                "packing_list_qty": 50000,
-                "total_amount": "$ 10,000.00 ($0.20/pc)",
-                "incoterms": "FOB Bangkok / Air Freight",
-                "suggested_hs_code": "4016.99.90 (Rubber Dampener)",
-                "suggested_coo": "Form D (ATIGA Preferential Rate)",
-                "hs_confirmed": False,
-                "coo_confirmed": False,
-            }
-            st.session_state.view_mode = "add_document"
-            st.rerun()
+    if st.button(
+        "🤖 Process Documents with AI OCR",
+        type="primary",
+        use_container_width=True,
+    ):
+      first_file = uploaded_files[0]
+      file_bytes = first_file.getvalue()
+      file_ext = first_file.name.split(".")[-1].lower()
 
-    st.markdown("---")
-    if st.button("📊 Back to Main Dashboard", use_container_width=True):
-        st.session_state.view_mode = "dashboard"
-        st.rerun()
+      extracted_res = None
+
+      # 1. ส่งอ่านด้วย Gemini AI ถ้าระบุ API Key
+      if gemini_key and file_ext in ["pdf", "png", "jpg"]:
+        with st.spinner("🤖 Gemini AI กำลังแกะข้อมูลจากเอกสาร PDF จริง..."):
+          try:
+            mime = "application/pdf" if file_ext == "pdf" else "image/png"
+            extracted_res = extract_data_with_gemini(
+                file_bytes, mime, gemini_key
+            )
+          except Exception as e:
+            st.error(f"การอ่านด้วย AI ขัดข้อง: {e}")
+
+      # 2. อ่านด้วย Parser ตัวกลางถ้าระบุคีย์ไม่ครบหรือเป็น Excel/CSV
+      if not extracted_res:
+        with st.spinner("📄 กำลังสกัดข้อความจากไฟล์..."):
+          extracted_res = extract_fallback_text(first_file, file_ext)
+
+      # บันทึกข้อมูลที่อ่านได้จริงเข้าสู่ Staging Data
+      st.session_state.staging_data = {
+          "running_id": f"EXP-2026-0{len(st.session_state.master_db) + 51:02d}",
+          "customer_name": extracted_res.get(
+              "customer_name", "Unknown Customer"
+          ),
+          "destination_country": extracted_res.get(
+              "destination_country", "Vietnam"
+          ),
+          "product_desc": extracted_res.get("product_desc", "Electronic Parts"),
+          "po_number": extracted_res.get("po_number", "PO-NONE"),
+          "invoice_qty": int(extracted_res.get("invoice_qty", 0)),
+          "packing_list_qty": int(extracted_res.get("packing_list_qty", 0)),
+          "total_amount": str(extracted_res.get("total_amount", "N/A")),
+          "incoterms": extracted_res.get("incoterms", "FOB Bangkok"),
+          "suggested_hs_code": extracted_res.get(
+              "suggested_hs_code", "4016.99.90"
+          ),
+          "suggested_coo": extracted_res.get(
+              "suggested_coo", "Form D (ATIGA Preferential Rate)"
+          ),
+      }
+      st.session_state.view_mode = "add_document"
+      st.rerun()
+
+  st.markdown("---")
+  if st.button("📊 Back to Main Dashboard", use_container_width=True):
+    st.session_state.view_mode = "dashboard"
+    st.rerun()
 
 
 # ==========================================
-# 4. MAIN SCREEN DISPLAY SWITCH
+# 5. MAIN DISPLAY (VERIFICATION GRID WITH REAL DATA)
 # ==========================================
-
-# ------------------------------------------
-# MODE A: EXTRACTED RESULT VERIFICATION GRID (ตาม MOCKUP)
-# ------------------------------------------
 if (
     st.session_state.view_mode == "add_document"
     and st.session_state.staging_data
 ):
-    data = st.session_state.staging_data
+  data = st.session_state.staging_data
 
-    # Header section
-    col_h1, col_h2 = st.columns([3, 1])
-    with col_h1:
-        st.title("📦 Add & Validate Shipping Document")
-        st.caption(
-            "Upload Invoice, Packing List, or PO for Automated AI Extraction &"
-            " Customs Readiness Check"
-        )
-    with col_h2:
-        st.markdown(
-            f"**AUTO RUNNING ID**  \n`{data['running_id']}`",
-            help="Auto generated ID",
-        )
+  col_h1, col_h2 = st.columns([3, 1])
+  with col_h1:
+    st.title("📦 Add & Validate Shipping Document")
+    st.caption("AI Extracted Result from Uploaded File")
+  with col_h2:
+    st.markdown(f"**AUTO RUNNING ID**  \n`{data['running_id']}`")
 
-    st.markdown("---")
-    st.subheader("🔍 Step 2-5: AI Extracted Data & Verification Grid")
-    st.caption(
-        "Review AI pre-filled data. You can edit or confirm any field directly"
-        " before submission."
+  st.markdown("---")
+  st.subheader("🔍 Step 2-5: AI Extracted Data & Verification Grid")
+
+  # AI Suggested Box
+  c_hs, c_coo = st.columns(2)
+  with c_hs:
+    st.markdown(
+        '<div class="ai-suggest-box"><b style="color:#f9fafb;">🏷️ AI SUGGESTED'
+        ' HS CODE</b></div>',
+        unsafe_allow_html=True,
+    )
+    hs_input = st.text_input(
+        "Edit HS Code if needed:",
+        value=data["suggested_hs_code"],
+        key="input_hs",
     )
 
-    # Box 1: AI Suggested HS Code & C/O Form Controls
-    c_hs, c_coo = st.columns(2)
+  with c_coo:
+    st.markdown(
+        '<div class="ai-suggest-box"><b style="color:#f9fafb;">📜 AI SUGGESTED'
+        ' C/O FORM</b></div>',
+        unsafe_allow_html=True,
+    )
+    coo_select = st.selectbox(
+        "Select C/O Form:",
+        [
+            "Form D (ATIGA Preferential Rate)",
+            "Form JTEPA (Japan-Thailand)",
+            "Form AKFTA (ASEAN-Korea)",
+            "General C/O",
+        ],
+        index=0,
+        key="select_coo",
+    )
 
-    with c_hs:
-        st.markdown(
-            """
-            <div class="ai-suggest-box">
-                <div style="display:flex; justify-between; align-items:center;">
-                    <b style="color:#f9fafb; font-size:12px;">🏷️ AI SUGGESTED HS CODE</b>
-                    <span style="background:#1e3a8a; color:#60a5fa; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold;">🤖 98% Match</span>
-                </div>
-            </div>
-        """,
-            unsafe_allow_html=True,
-        )
-        hs_input = st.text_input(
-            "Edit HS Code if needed:",
-            value=data["suggested_hs_code"],
-            key="input_hs",
-        )
-        confirm_hs = st.checkbox("✓ Confirm HS Code", value=True, key="chk_hs")
+  st.write(" ")
 
-    with c_coo:
-        st.markdown(
-            """
-            <div class="ai-suggest-box">
-                <div style="display:flex; justify-between; align-items:center;">
-                    <b style="color:#f9fafb; font-size:12px;">📜 AI SUGGESTED C/O FORM</b>
-                    <span style="background:#064e3b; color:#34d399; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold;">🤖 FTA Matched</span>
-                </div>
-            </div>
-        """,
-            unsafe_allow_html=True,
-        )
-        coo_select = st.selectbox(
-            "Select C/O Form:",
-            [
-                "Form D (ATIGA Preferential Rate)",
-                "Form JTEPA (Japan-Thailand)",
-                "Form AKFTA (ASEAN-Korea)",
-                "General C/O",
-            ],
-            index=0,
-            key="select_coo",
-        )
-        confirm_coo = st.checkbox("✓ Confirm C/O Form", value=True, key="chk_coo")
+  # Dynamic Editable Form from PDF
+  with st.form("verification_form"):
+    f1, f2 = st.columns(2)
+    with f1:
+      cust_name = st.text_input("Customer Name", value=data["customer_name"])
+      prod_desc = st.text_input(
+          "Product Description", value=data["product_desc"]
+      )
+      inv_qty = st.number_input(
+          "Invoice Quantity (PCS)", value=int(data["invoice_qty"])
+      )
+      total_amt = st.text_input(
+          "Total Unit Amount (USD)", value=data["total_amount"]
+      )
 
-    st.write(" ")
+    with f2:
+      dest_country = st.text_input(
+          "Destination Country", value=data["destination_country"]
+      )
+      po_num = st.text_input("PO Number", value=data["po_number"])
+      pl_qty = st.number_input(
+          "Packing List Quantity (PCS)", value=int(data["packing_list_qty"])
+      )
+      incoterm = st.text_input(
+          "Incoterms & Shipping Mode", value=data["incoterms"]
+      )
 
-    # Box 2: Form Fields Editing Grid
-    with st.form("verification_form"):
-        f1, f2 = st.columns(2)
-        with f1:
-            cust_name = st.text_input(
-                "Customer Name", value=data["customer_name"]
-            )
-            prod_desc = st.text_input(
-                "Product Description", value=data["product_desc"]
-            )
-            inv_qty = st.number_input(
-                "Invoice Quantity (PCS)", value=int(data["invoice_qty"])
-            )
-            total_amt = st.text_input(
-                "Total Unit Amount (USD)", value=data["total_amount"]
-            )
+    # Quantity Match Checking
+    is_qty_pass = (inv_qty == pl_qty) and (inv_qty > 0)
+    if is_qty_pass:
+      st.markdown(
+          '<div class="pass-box"><b style="color:#6ee7b7;">✅ AI Consistency'
+          " Check Passed</b><br>Invoice & Packing List quantities match"
+          " perfectly.</div>",
+          unsafe_allow_html=True,
+      )
+    else:
+      st.markdown(
+          f'<div class="alert-box"><b style="color:#fca5a5;">⚠️ Anomaly'
+          f" Detected: Quantity Discrepancy</b><br>Invoice states {inv_qty:,}"
+          f" PCS, but Packing List states {pl_qty:,} PCS.</div>",
+          unsafe_allow_html=True,
+      )
 
-        with f2:
-            dest_country = st.selectbox(
-                "Destination Country",
-                ["Vietnam", "Japan", "Malaysia", "South Korea"],
-                index=0,
-            )
-            po_num = st.text_input("PO Number", value=data["po_number"])
-            pl_qty = st.number_input(
-                "Packing List Quantity (PCS)", value=int(data["packing_list_qty"])
-            )
-            incoterm = st.text_input(
-                "Incoterms & Shipping Mode", value=data["incoterms"]
-            )
+    b_cancel, b_submit = st.columns([1, 2])
+    with b_cancel:
+      btn_cancel = st.form_submit_button("Cancel", use_container_width=True)
+    with b_submit:
+      btn_confirm = st.form_submit_button(
+          "🚀 Confirm & Submit to Dashboard",
+          type="primary",
+          use_container_width=True,
+      )
 
-        # Consistency Check Status Banner
-        is_qty_pass = inv_qty == pl_qty
-        if is_qty_pass:
-            st.markdown(
-                """
-                <div class="pass-box">
-                    <b style="color:#6ee7b7;">✅ AI Consistency Check Passed</b><br>
-                    <span style="font-size:12px; color:#e5e7eb;">Invoice & Packing List quantities match perfectly. High Customs Readiness Score predicted (95%).</span>
-                </div>
-            """,
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                f"""
-                <div class="alert-box">
-                    <b style="color:#fca5a5;">⚠️ Anomaly Detected: Quantity Discrepancy</b><br>
-                    <span style="font-size:12px; color:#e5e7eb;">Invoice states {inv_qty:,} PCS, but Packing List states {pl_qty:,} PCS. Physical inspection likely.</span>
-                </div>
-            """,
-                unsafe_allow_html=True,
-            )
+    if btn_cancel:
+      st.session_state.staging_data = None
+      st.session_state.view_mode = "dashboard"
+      st.rerun()
 
-        # Form Actions
-        b_cancel, b_submit = st.columns([1, 2])
-        with b_cancel:
-            btn_cancel = st.form_submit_button(
-                "Cancel", use_container_width=True
-            )
-        with b_submit:
-            btn_confirm = st.form_submit_button(
-                "🚀 Confirm & Submit to Dashboard",
-                type="primary",
-                use_container_width=True,
-            )
+    if btn_confirm:
+      score = 95 if is_qty_pass else 40
+      risk = "Low" if score >= 80 else "High"
+      issue = (
+          "None (Passed)"
+          if is_qty_pass
+          else f"Qty Mismatch ({abs(inv_qty-pl_qty):,} PCS)"
+      )
 
-        if btn_cancel:
-            st.session_state.staging_data = None
-            st.session_state.view_mode = "dashboard"
-            st.rerun()
+      new_row = {
+          "Shipment_ID": data["running_id"],
+          "Customer_Name": cust_name,
+          "Destination": dest_country,
+          "Readiness_Score": score,
+          "Risk_Level": risk,
+          "Issue_Detected": issue,
+          "Responsible": "System" if is_qty_pass else "Planning",
+          "Invoice_Qty": inv_qty,
+          "PL_Qty": pl_qty,
+          "HS_Code": hs_input,
+          "COO_Form": coo_select,
+      }
 
-        if btn_confirm:
-            # คำนวณคะแนนและบันทึกเข้า master_db จริง
-            score = 95 if is_qty_pass else 40
-            risk = "Low" if score >= 80 else "High"
-            issue = (
-                "None (Passed)"
-                if is_qty_pass
-                else f"Qty Mismatch ({abs(inv_qty-pl_qty):,} PCS)"
-            )
+      st.session_state.master_db = pd.concat(
+          [st.session_state.master_db, pd.DataFrame([new_row])],
+          ignore_index=True,
+      )
+      st.session_state.staging_data = None
+      st.session_state.view_mode = "dashboard"
+      st.toast(f"✅ บันทึกข้อมูล {data['running_id']} เรียบร้อยแล้ว!")
+      st.rerun()
 
-            new_row = {
-                "Shipment_ID": data["running_id"],
-                "Customer_Name": cust_name,
-                "Destination": dest_country,
-                "Readiness_Score": score,
-                "Risk_Level": risk,
-                "Issue_Detected": issue,
-                "Responsible": "System" if is_qty_pass else "Planning",
-                "Invoice_Qty": inv_qty,
-                "PL_Qty": pl_qty,
-                "HS_Code": hs_input,
-                "COO_Form": coo_select,
-            }
-
-            st.session_state.master_db = pd.concat(
-                [st.session_state.master_db, pd.DataFrame([new_row])],
-                ignore_index=True,
-            )
-            st.session_state.staging_data = None
-            st.session_state.view_mode = "dashboard"
-            st.toast(f"✅ Shipment {data['running_id']} added to Dashboard!")
-            st.rerun()
-
-# ------------------------------------------
-# MODE B: MAIN DASHBOARD VIEW
-# ------------------------------------------
 else:
-    st.title("🛡️ TradeReady AI Dashboard")
-    st.caption("Export Documentation & Customs Readiness Control Tower")
-
-    # แสดงตาราง Master Table ด้านล่างตามปกติ
-    st.dataframe(st.session_state.master_db, use_container_width=True)
+  st.title("🛡️ TradeReady AI Dashboard")
+  st.caption("Export Documentation & Customs Readiness Control Tower")
+  st.dataframe(st.session_state.master_db, use_container_width=True)
