@@ -40,29 +40,39 @@ st.markdown(
 # 2. REAL AI EXTRACTION ENGINE (PDF / EXCEL / CSV)
 # ==========================================
 def extract_data_with_gemini(file_bytes, mime_type, api_key):
-  """ส่งไฟล์ PDF/Image จริงไปให้ Gemini AI อ่านค่าและส่งกลับเป็น JSON"""
+  """สกัดข้อมูลจาก Commercial Invoice / Packing List จริงด้วย Gemini 1.5 Flash"""
   genai.configure(api_key=api_key)
   model = genai.GenerativeModel("gemini-1.5-flash")
 
   prompt = """
-    You are an expert export customs documentation reader.
-    Analyze the uploaded shipping document (Invoice, Packing List, or PO) and extract the exact text/data into this JSON format:
+    You are an AI Customs Auditor. Read the attached Commercial Invoice image/PDF and extract the exact fields into this strict JSON structure:
 
     {
-        "customer_name": "Full name after Sold to:",
-        "destination_country": "Country of destination in Ship to field",
-        "product_desc": "Main product description or item name",
-        "po_number": "PO or Order Number if available",
-        "invoice_qty": 0, // Integer of total quantity in invoice (PCS)
-        "packing_list_qty": 0, // Integer of total quantity in packing list (PCS)
-        "total_amount": "Total invoice value with currency e.g. $10,000",
-        "incoterms": "Incoterms & mode e.g. FOB Bangkok / Air Freight",
-        "suggested_hs_code": "8-digit HS Code recommendation",
-        "suggested_coo": "Recommended C/O Form name e.g. Form D (ATIGA Preferential Rate)"
+        "shipment_id": "Extract Shipment ID e.g. EXP-2026-002 or invoice number if missing",
+        "customer_name": "Full name of SOLD TO or SHIP TO customer e.g. Denso Japan",
+        "destination_country": "Country in SOLD TO / SHIP TO address e.g. Japan",
+        "product_desc": "Main description of the item e.g. Silicone Rubber Foot for Automotive ECU",
+        "po_number": "Customer PO number e.g. PO-DNS-4412",
+        "invoice_qty": 50000, // Number only (integer) from Total Qty
+        "packing_list_qty": 50000, // Number only (integer)
+        "total_amount": "Total amount with currency e.g. $12,500.00",
+        "incoterms": "Incoterms and Ship Via e.g. CIF / BY AIR FREIGHT",
+        "suggested_hs_code": "Full 8-digit HS code e.g. 4016.99.00",
+        "suggested_coo": "Automated C/O Form suggestion based on destination e.g. Form JTEPA (Japan-Thailand)"
     }
 
-    Return ONLY raw valid JSON text without markdown syntax.
+    Rules:
+    - Extract exact values shown in the document.
+    - Remove commas from qty integers.
+    - Return ONLY valid raw JSON text. Do not use markdown code blocks or ```json tag.
     """
+
+  doc_part = {"mime_type": mime_type, "data": file_bytes}
+  response = model.generate_content([doc_part, prompt])
+
+  # ทำความสะอาด String และแปลงเป็น JSON Object
+  clean_json = response.text.replace("```json", "").replace("```", "").strip()
+  return json.loads(clean_json)
 
   doc_part = {"mime_type": mime_type, "data": file_bytes}
   response = model.generate_content([doc_part, prompt])
