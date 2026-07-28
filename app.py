@@ -49,7 +49,7 @@ def extract_data_with_gemini(file_bytes, mime_type, api_key):
     Analyze the uploaded shipping document (Invoice, Packing List, or PO) and extract the exact text/data into this JSON format:
 
     {
-        "customer_name": "Full name of buyer / consignee / customer",
+        "customer_name": "Full name of Sold to:",
         "destination_country": "Country of destination (e.g., Vietnam, Japan, USA, Malaysia)",
         "product_desc": "Main product description or item name",
         "po_number": "PO or Order Number if available",
