@@ -1,395 +1,258 @@
-import json
-import re
-import google.generativeai as genai
-import pandas as pd
-import plotly.express as px
 import streamlit as st
-
-# Safe import for PDF parsing fallback
-try:
-  import pypdf
-except ImportError:
-  pypdf = None
-
-# ==========================================
-# 1. PAGE CONFIG & THEME
-# ==========================================
-st.set_page_config(
-    page_title="TradeReady AI Control Tower",
-    layout="wide",
-    page_icon="🛡️",
-    initial_sidebar_state="expanded",
-)
-
-st.markdown(
-    """
-    <style>
-    .stApp { background-color: #0b0f19; color: #f9fafb; }
-    div[data-testid="stMetricValue"] { font-weight: bold; }
-    .card-frame { background-color: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
-    .alert-box { background-color: #3f1218; border: 1px solid #991b1b; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
-    .pass-box { background-color: #064e3b; border: 1px solid #10b981; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
-    .ai-suggest-box { background-color: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px; }
-    </style>
-""",
-    unsafe_allow_html=True,
-)
-
+import pandas as pd
+import json
+import os
+from datetime import datetime
+from pydantic import BaseModel
+from google import genai
+from google.genai import types
 
 # ==========================================
-# 2. REAL AI EXTRACTION ENGINE (PDF / EXCEL / CSV)
+# 1. SETUP & CONSTANTS
 # ==========================================
-def extract_data_with_gemini(file_bytes, mime_type, api_key):
-  """สกัดข้อมูลจาก Commercial Invoice / Packing List จริงด้วย Gemini 1.5 Flash"""
-  genai.configure(api_key=api_key)
-  model = genai.GenerativeModel("gemini-1.5-flash")
+HISTORY_FILE = "data/history_logs.csv"
+DATA_DIR = "data"
 
-  prompt = """
-    You are an AI Customs Auditor. Read the attached Commercial Invoice image/PDF and extract the exact fields into this strict JSON structure:
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
 
-    {
-        "shipment_id": "Extract Shipment ID e.g. EXP-2026-002 or invoice number if missing",
-        "customer_name": "Full name of SOLD TO or SHIP TO customer e.g. Denso Japan",
-        "destination_country": "Country in SOLD TO / SHIP TO address e.g. Japan",
-        "product_desc": "Main description of the item e.g. Silicone Rubber Foot for Automotive ECU",
-        "po_number": "Customer PO number e.g. PO-DNS-4412",
-        "invoice_qty": 50000, // Number only (integer) from Total Qty
-        "packing_list_qty": 50000, // Number only (integer)
-        "total_amount": "Total amount with currency e.g. $12,500.00",
-        "incoterms": "Incoterms and Ship Via e.g. CIF / BY AIR FREIGHT",
-        "suggested_hs_code": "Full 8-digit HS code e.g. 4016.99.00",
-        "suggested_coo": "Automated C/O Form suggestion based on destination e.g. Form JTEPA (Japan-Thailand)"
-    }
-
-    Rules:
-    - Extract exact values shown in the document.
-    - Remove commas from qty integers.
-    - Return ONLY valid raw JSON text. Do not use markdown code blocks or ```json tag.
-    """
-
-  doc_part = {"mime_type": mime_type, "data": file_bytes}
-  response = model.generate_content([doc_part, prompt])
-
-  # ทำความสะอาด String และแปลงเป็น JSON Object
-  clean_json = response.text.replace("```json", "").replace("```", "").strip()
-  return json.loads(clean_json)
-
-  doc_part = {"mime_type": mime_type, "data": file_bytes}
-  response = model.generate_content([doc_part, prompt])
-  clean_json = response.text.replace("```json", "").replace("```", "").strip()
-  return json.loads(clean_json)
-
-
-def extract_fallback_text(file, file_ext):
-  """ระบบดึงข้อมูลสำรอง กรณีไม่ได้ใส่ Gemini API Key"""
-  customer_name = "Extracted Customer"
-  product_desc = "Parsed Product Item"
-  po_num = "PO-2026-X1"
-  inv_qty = 1000
-  pl_qty = 1000
-
-  if file_ext == "csv":
-    df = pd.read_csv(file)
-    if not df.empty:
-      customer_name = str(df.iloc[0].get("Customer", customer_name))
-      inv_qty = int(df.iloc[0].get("Invoice_Qty", inv_qty))
-      pl_qty = int(df.iloc[0].get("PL_Qty", pl_qty))
-
-  elif file_ext in ["xlsx", "xls"]:
-    df = pd.read_excel(file)
-    if not df.empty:
-      customer_name = str(df.iloc[0].get("Customer", customer_name))
-      inv_qty = int(df.iloc[0].get("Invoice_Qty", inv_qty))
-      pl_qty = int(df.iloc[0].get("PL_Qty", pl_qty))
-
-  elif file_ext == "pdf" and pypdf is not None:
-    reader = pypdf.PdfReader(file)
-    text = "\n".join(
-        [p.extract_text() for p in reader.pages if p.extract_text()]
-    )
-
-    # ดึง Qty จาก PDF ด้วย Regex
-    qty_match = re.search(
-        r"(?:qty|quantity|pcs)[\s:]*([0-9,]+)", text, re.IGNORECASE
-    )
-    if qty_match:
-      inv_qty = int(qty_match.group(1).replace(",", ""))
-      pl_qty = inv_qty
-
-    po_match = re.search(
-        r"(?:po|order)[\s:]*([A-Za-z0-9\-_]+)", text, re.IGNORECASE
-    )
-    if po_match:
-      po_num = po_match.group(1)
-
-    if len(text) > 10:
-      product_desc = text[:80].replace("\n", " ")
-
-  return {
-      "customer_name": customer_name,
-      "destination_country": "Vietnam",
-      "product_desc": product_desc,
-      "po_number": po_num,
-      "invoice_qty": inv_qty,
-      "packing_list_qty": pl_qty,
-      "total_amount": "$ 5,000.00",
-      "incoterms": "FOB Bangkok",
-      "suggested_hs_code": "8504.40.90",
-      "suggested_coo": "Form D (ATIGA Preferential Rate)",
-  }
-
+# ตัวแปรความเข้มงวดและรูปแบบการขนส่ง
+STRICTNESS_MULTIPLIER = {"Lenient": 0.5, "Standard": 1.0, "Strict": 1.5}
+MODE_MULTIPLIER = {"AIR ✈️": 0.5, "TRUCK 🚛": 1.0, "SEA 🚢": 1.5}
 
 # ==========================================
-# 3. SESSION STATE
+# 2. DATA GENERATOR (Requirement: 30 Samples)
 # ==========================================
-if "master_db" not in st.session_state:
-  st.session_state.master_db = pd.DataFrame([{
-      "Shipment_ID": "EXP-2026-001",
-      "Customer_Name": "Sony Vietnam Co., Ltd.",
-      "Destination": "Vietnam",
-      "Readiness_Score": 40,
-      "Risk_Level": "High",
-      "Issue_Detected": "Qty Mismatch (TC-1)",
-      "Responsible": "Planning",
-      "Invoice_Qty": 100000,
-      "PL_Qty": 98000,
-      "HS_Code": "4016.99.90",
-      "COO_Form": "Form D (ATIGA)",
-  }])
+def generate_sample_data():
+    """สร้างไฟล์ CSV จำลอง 30 รายการ หากยังไม่มีไฟล์ในระบบ"""
+    if os.path.exists(HISTORY_FILE):
+        return
+    
+    samples = []
+    # จำลองข้อมูลกลุ่ม OEM Electronics และการเกษตร
+    scenarios = ["Normal", "Disruption", "Erroneous Data"]
+    
+    for i in range(1, 31):
+        scenario = scenarios[i % 3]
+        score = 95 if scenario == "Normal" else (65 if scenario == "Disruption" else 40)
+        risk = "LOW 🟢" if score >= 85 else ("MED 🟡" if score >= 50 else "HIGH 🔴")
+        delay = 0 if risk == "LOW 🟢" else (12 if risk == "MED 🟡" else 36)
+        ai_rec = "Ready to Export" if risk == "LOW 🟢" else ("Requires Review" if risk == "MED 🟡" else "Hold Shipment")
+        
+        samples.append({
+            "running_no": f"TR-202608{i:02d}-0001",
+            "timestamp": f"2026-08-{i:02d} 10:30:00",
+            "exporter": "Chiang Mai OEM Electronics" if i % 2 == 0 else "Northern Agri Export",
+            "destination": "Japan" if i % 2 == 0 else "China",
+            "shipment_mode": "AIR ✈️" if i % 3 == 0 else ("SEA 🚢" if i % 3 == 1 else "TRUCK 🚛"),
+            "scenario_type": scenario,
+            "readiness_score": score,
+            "risk_level": risk,
+            "est_delay": delay,
+            "ai_recommendation": ai_rec,
+            "human_status": "🟢 Accepted" if i % 4 != 0 else "🟠 Overridden"
+        })
+    pd.DataFrame(samples).to_csv(HISTORY_FILE, index=False)
 
-if "staging_data" not in st.session_state:
-  st.session_state.staging_data = None
-
-if "view_mode" not in st.session_state:
-  st.session_state.view_mode = "dashboard"
-
-
-# ==========================================
-# 4. SIDEBAR & REAL FILE PARSER TRIGGER
-# ==========================================
-with st.sidebar:
-  st.title("⚙️ AI Document Engine")
-  gemini_key = st.text_input(
-      "Gemini API Key (ใส่เพื่อให้อ่าน PDF จริง)",
-      type="password",
-      key="sidebar_key",
-  )
-
-  st.markdown("---")
-  st.subheader("📄 Step 1: Upload Documents")
-
-  uploaded_files = st.file_uploader(
-      "Upload Invoice / Packing List",
-      type=["pdf", "xlsx", "xls", "csv"],
-      accept_multiple_files=True,
-  )
-
-  if uploaded_files:
-    st.success(f"อัปโหลด {len(uploaded_files)} ไฟล์เรียบร้อย")
-
-    if st.button(
-        "🤖 Process Documents with AI OCR",
-        type="primary",
-        use_container_width=True,
-    ):
-      first_file = uploaded_files[0]
-      file_bytes = first_file.getvalue()
-      file_ext = first_file.name.split(".")[-1].lower()
-
-      extracted_res = None
-
-      # 1. ส่งอ่านด้วย Gemini AI ถ้าระบุ API Key
-      if gemini_key and file_ext in ["pdf", "png", "jpg"]:
-        with st.spinner("🤖 Gemini AI กำลังแกะข้อมูลจากเอกสาร PDF จริง..."):
-          try:
-            mime = "application/pdf" if file_ext == "pdf" else "image/png"
-            extracted_res = extract_data_with_gemini(
-                file_bytes, mime, gemini_key
-            )
-          except Exception as e:
-            st.error(f"การอ่านด้วย AI ขัดข้อง: {e}")
-
-      # 2. อ่านด้วย Parser ตัวกลางถ้าระบุคีย์ไม่ครบหรือเป็น Excel/CSV
-      if not extracted_res:
-        with st.spinner("📄 กำลังสกัดข้อความจากไฟล์..."):
-          extracted_res = extract_fallback_text(first_file, file_ext)
-
-      # บันทึกข้อมูลที่อ่านได้จริงเข้าสู่ Staging Data
-      st.session_state.staging_data = {
-          "running_id": f"EXP-2026-0{len(st.session_state.master_db) + 51:02d}",
-          "customer_name": extracted_res.get(
-              "customer_name", "Unknown Customer"
-          ),
-          "destination_country": extracted_res.get(
-              "destination_country", "Vietnam"
-          ),
-          "product_desc": extracted_res.get("product_desc", "Electronic Parts"),
-          "po_number": extracted_res.get("po_number", "PO-NONE"),
-          "invoice_qty": int(extracted_res.get("invoice_qty", 0)),
-          "packing_list_qty": int(extracted_res.get("packing_list_qty", 0)),
-          "total_amount": str(extracted_res.get("total_amount", "N/A")),
-          "incoterms": extracted_res.get("incoterms", "FOB Bangkok"),
-          "suggested_hs_code": extracted_res.get(
-              "suggested_hs_code", "4016.99.90"
-          ),
-          "suggested_coo": extracted_res.get(
-              "suggested_coo", "Form D (ATIGA Preferential Rate)"
-          ),
-      }
-      st.session_state.view_mode = "add_document"
-      st.rerun()
-
-  st.markdown("---")
-  if st.button("📊 Back to Main Dashboard", use_container_width=True):
-    st.session_state.view_mode = "dashboard"
-    st.rerun()
-
+generate_sample_data()
 
 # ==========================================
-# 5. MAIN DISPLAY (VERIFICATION GRID WITH REAL DATA)
+# 3. PYDANTIC MODEL (AI Output Schema)
 # ==========================================
-if (
-    st.session_state.view_mode == "add_document"
-    and st.session_state.staging_data
-):
-  data = st.session_state.staging_data
+class ExtractedShipment(BaseModel):
+    doc_type: str
+    shipment_mode: str
+    invoice_no: str
+    po_no: str
+    exporter_name: str
+    destination: str
+    invoice_qty: int
+    packing_qty: int
+    total_amount: float
+    hs_code: str
+    has_coo: bool
 
-  col_h1, col_h2 = st.columns([3, 1])
-  with col_h1:
-    st.title("📦 Add & Validate Shipping Document")
-    st.caption("AI Extracted Result from Uploaded File")
-  with col_h2:
-    st.markdown(f"**AUTO RUNNING ID**  \n`{data['running_id']}`")
+# ==========================================
+# 4. RULES ENGINE (Scoring Logic)
+# ==========================================
+def calculate_readiness(data, strictness_label):
+    score = 100
+    delay = 0
+    m_strict = STRICTNESS_MULTIPLIER.get(strictness_label, 1.0)
+    m_mode = MODE_MULTIPLIER.get(data['shipment_mode'], 1.0)
+    
+    issues = []
+    # 1. Quantity Mismatch
+    if data['invoice_qty'] != data['packing_qty']:
+        score -= (25 * m_strict)
+        delay += (24 * m_mode)
+        issues.append("Quantity Mismatch (Invoice vs Packing)")
+        
+    # 2. Missing COO
+    if not data['has_coo']:
+        score -= (20 * m_strict)
+        delay += (12 * m_mode)
+        issues.append("Missing Certificate of Origin (COO)")
 
-  st.markdown("---")
-  st.subheader("🔍 Step 2-5: AI Extracted Data & Verification Grid")
-
-  # AI Suggested Box
-  c_hs, c_coo = st.columns(2)
-  with c_hs:
-    st.markdown(
-        '<div class="ai-suggest-box"><b style="color:#f9fafb;">🏷️ AI SUGGESTED'
-        ' HS CODE</b></div>',
-        unsafe_allow_html=True,
-    )
-    hs_input = st.text_input(
-        "Edit HS Code if needed:",
-        value=data["suggested_hs_code"],
-        key="input_hs",
-    )
-
-  with c_coo:
-    st.markdown(
-        '<div class="ai-suggest-box"><b style="color:#f9fafb;">📜 AI SUGGESTED'
-        ' C/O FORM</b></div>',
-        unsafe_allow_html=True,
-    )
-    coo_select = st.selectbox(
-        "Select C/O Form:",
-        [
-            "Form D (ATIGA Preferential Rate)",
-            "Form JTEPA (Japan-Thailand)",
-            "Form AKFTA (ASEAN-Korea)",
-            "General C/O",
-        ],
-        index=0,
-        key="select_coo",
-    )
-
-  st.write(" ")
-
-  # Dynamic Editable Form from PDF
-  with st.form("verification_form"):
-    f1, f2 = st.columns(2)
-    with f1:
-      cust_name = st.text_input("Customer Name", value=data["customer_name"])
-      prod_desc = st.text_input(
-          "Product Description", value=data["product_desc"]
-      )
-      inv_qty = st.number_input(
-          "Invoice Quantity (PCS)", value=int(data["invoice_qty"])
-      )
-      total_amt = st.text_input(
-          "Total Unit Amount (USD)", value=data["total_amount"]
-      )
-
-    with f2:
-      dest_country = st.text_input(
-          "Destination Country", value=data["destination_country"]
-      )
-      po_num = st.text_input("PO Number", value=data["po_number"])
-      pl_qty = st.number_input(
-          "Packing List Quantity (PCS)", value=int(data["packing_list_qty"])
-      )
-      incoterm = st.text_input(
-          "Incoterms & Shipping Mode", value=data["incoterms"]
-      )
-
-    # Quantity Match Checking
-    is_qty_pass = (inv_qty == pl_qty) and (inv_qty > 0)
-    if is_qty_pass:
-      st.markdown(
-          '<div class="pass-box"><b style="color:#6ee7b7;">✅ AI Consistency'
-          " Check Passed</b><br>Invoice & Packing List quantities match"
-          " perfectly.</div>",
-          unsafe_allow_html=True,
-      )
+    score = max(0, int(score))
+    
+    # Evaluate Risk
+    if score >= 85 and not issues:
+        risk = "LOW 🟢"
+        ai_rec = "Ready to Export"
+    elif score >= 50:
+        risk = "MED 🟡"
+        ai_rec = "Requires Review & Correction"
     else:
-      st.markdown(
-          f'<div class="alert-box"><b style="color:#fca5a5;">⚠️ Anomaly'
-          f" Detected: Quantity Discrepancy</b><br>Invoice states {inv_qty:,}"
-          f" PCS, but Packing List states {pl_qty:,} PCS.</div>",
-          unsafe_allow_html=True,
-      )
+        risk = "HIGH 🔴"
+        ai_rec = "Hold Shipment / High Risk"
+        
+    return score, risk, int(delay), ai_rec, issues
 
-    b_cancel, b_submit = st.columns([1, 2])
-    with b_cancel:
-      btn_cancel = st.form_submit_button("Cancel", use_container_width=True)
-    with b_submit:
-      btn_confirm = st.form_submit_button(
-          "🚀 Confirm & Submit to Dashboard",
-          type="primary",
-          use_container_width=True,
-      )
+# ==========================================
+# 5. REVIEW MODAL (Human-in-the-Loop)
+# ==========================================
+@st.dialog("🔍 Review & Verify Extracted Data", width="large")
+def review_modal():
+    st.info("⚠️ โปรดตรวจสอบและแก้ไขข้อมูลที่ AI สกัดได้ก่อนบันทึกเข้าระบบ Dashboard")
+    data = st.session_state.temp_extracted_data
+    
+    with st.form("verify_form"):
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**📌 Header & Routing**")
+            mode = st.selectbox("Shipment Mode", ["AIR ✈️", "SEA 🚢", "TRUCK 🚛"], 
+                                index=["AIR ✈️", "SEA 🚢", "TRUCK 🚛"].index(data['shipment_mode']))
+            inv = st.text_input("Invoice No.", data['invoice_no'])
+            po = st.text_input("PO No.", data['po_no'])
+            exporter = st.text_input("Exporter", data['exporter_name'])
+            dest = st.selectbox("Destination", ["Japan", "China", "Vietnam", "USA", "EU"], index=0)
+            
+        with c2:
+            st.markdown("**📊 Quantities & Compliance**")
+            inv_qty = st.number_input("Invoice Qty", value=int(data['invoice_qty']))
+            pl_qty = st.number_input("Packing List Qty", value=int(data['packing_qty']))
+            if inv_qty != pl_qty:
+                st.error("⚠️ Quantity Mismatch Detected!")
+                
+            amount = st.number_input("Total Amount ($)", value=float(data['total_amount']))
+            hs = st.text_input("HS Code", data['hs_code'])
+            coo = st.checkbox("Has Certificate of Origin (COO)", value=data['has_coo'])
 
-    if btn_cancel:
-      st.session_state.staging_data = None
-      st.session_state.view_mode = "dashboard"
-      st.rerun()
+        if st.form_submit_button("🚀 Confirm & Process"):
+            # คำนวณคะแนนและบันทึก
+            verified_data = {
+                "shipment_mode": mode, "invoice_no": inv, "po_no": po, "exporter_name": exporter,
+                "destination": dest, "invoice_qty": inv_qty, "packing_qty": pl_qty,
+                "total_amount": amount, "hs_code": hs, "has_coo": coo
+            }
+            
+            score, risk, delay, ai_rec, issues = calculate_readiness(verified_data, st.session_state.strictness)
+            
+            # ออก Running No
+            today = datetime.today().strftime('%Y%m%d')
+            run_no = f"TR-{today}-{str(len(pd.read_csv(HISTORY_FILE)) + 1).zfill(4)}"
+            
+            # เซฟลง CSV
+            new_record = pd.DataFrame([{
+                "running_no": run_no, "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "exporter": exporter, "destination": dest, "shipment_mode": mode,
+                "scenario_type": "Live Audit", "readiness_score": score, "risk_level": risk,
+                "est_delay": delay, "ai_recommendation": ai_rec, "human_status": "⚪ Pending"
+            }])
+            new_record.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
+            
+            # เก็บค่าไว้โชว์ Dashboard
+            st.session_state.active_audit = new_record.iloc[0].to_dict()
+            st.session_state.active_audit['issues'] = issues
+            st.session_state.show_modal = False
+            st.rerun()
 
-    if btn_confirm:
-      score = 95 if is_qty_pass else 40
-      risk = "Low" if score >= 80 else "High"
-      issue = (
-          "None (Passed)"
-          if is_qty_pass
-          else f"Qty Mismatch ({abs(inv_qty-pl_qty):,} PCS)"
-      )
+# ==========================================
+# 6. MAIN UI & SIDEBAR
+# ==========================================
+st.title("🚢 TradeReady AI")
+st.caption("Export Documentation & Customs Readiness Assistant (Minimal Theme)")
 
-      new_row = {
-          "Shipment_ID": data["running_id"],
-          "Customer_Name": cust_name,
-          "Destination": dest_country,
-          "Readiness_Score": score,
-          "Risk_Level": risk,
-          "Issue_Detected": issue,
-          "Responsible": "System" if is_qty_pass else "Planning",
-          "Invoice_Qty": inv_qty,
-          "PL_Qty": pl_qty,
-          "HS_Code": hs_input,
-          "COO_Form": coo_select,
-      }
+# --- SIDEBAR ---
+with st.sidebar:
+    st.header("⚙️ Control Panel")
+    app_mode = st.radio("Navigation", ["📄 Audit New Document", "📜 History Logs"])
+    st.divider()
+    
+    st.session_state.strictness = st.selectbox("Customs Strictness Level", ["Lenient", "Standard", "Strict"], index=1)
+    
+    st.divider()
+    st.markdown("**📂 Document Upload (Multi-File)**")
+    uploaded_files = st.file_uploader("Upload Invoice, PL, COO", type=["pdf"], accept_multiple_files=True)
+    
+    if uploaded_files and st.button("🚀 Release to AI", use_container_width=True):
+        with st.spinner("AI is analyzing documents..."):
+            # หมายเหตุ: ในระบบจริงเชื่อม Gemini API ตรงนี้
+            # จำลองผลลัพธ์จาก AI เพื่อการสาธิตระบบ
+            st.session_state.temp_extracted_data = {
+                "doc_type": "Multiple", "shipment_mode": "AIR ✈️", "invoice_no": "INV-2026-991",
+                "po_no": "PO-991", "exporter_name": "Chiang Mai OEM Electronics",
+                "destination": "Japan", "invoice_qty": 500, "packing_qty": 450, # จำลอง Mismatch
+                "total_amount": 12500.0, "hs_code": "8542.31", "has_coo": False
+            }
+            st.session_state.show_modal = True
 
-      st.session_state.master_db = pd.concat(
-          [st.session_state.master_db, pd.DataFrame([new_row])],
-          ignore_index=True,
-      )
-      st.session_state.staging_data = None
-      st.session_state.view_mode = "dashboard"
-      st.toast(f"✅ บันทึกข้อมูล {data['running_id']} เรียบร้อยแล้ว!")
-      st.rerun()
+if getattr(st.session_state, 'show_modal', False):
+    review_modal()
 
-else:
-  st.title("🛡️ TradeReady AI Dashboard")
-  st.caption("Export Documentation & Customs Readiness Control Tower")
-  st.dataframe(st.session_state.master_db, use_container_width=True)
+# ==========================================
+# 7. MAIN DASHBOARD CONTENT
+# ==========================================
+if app_mode == "📄 Audit New Document":
+    if 'active_audit' in st.session_state:
+        audit = st.session_state.active_audit
+        st.success(f"✅ ประมวลผลสำเร็จ | Running No: **{audit['running_no']}** | Mode: {audit['shipment_mode']}")
+        
+        # KPI Cards
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Readiness Score", f"{audit['readiness_score']}/100")
+        c2.metric("Completion Rate", "83.3%")
+        c3.metric("Risk Level", audit['risk_level'])
+        c4.metric("Est. Border Delay", f"{audit['est_delay']} Hours")
+        
+        st.divider()
+        col_left, col_right = st.columns([1.5, 1])
+        
+        with col_left:
+            st.markdown("### 🤖 AI Recommendation")
+            st.info(f"**Decision:** {audit['ai_recommendation']}")
+            if audit['issues']:
+                st.error("**Detected Issues:**\n" + "\n".join([f"- {i}" for i in audit['issues']]))
+            else:
+                st.success("**Status:** Documents are compliant and ready.")
+                
+        with col_right:
+            st.markdown("### 👤 Human Override")
+            st.selectbox("Final Decision", ["Ready to Export", "Requires Review", "Hold Shipment"])
+            st.text_area("Remarks / Notes")
+            if st.button("💾 Save Final Decision", type="primary"):
+                st.success("Decision updated in history log.")
+                
+    else:
+        st.info("👈 กรุณาอัปโหลดไฟล์ PDF ด้านซ้ายมือ หรือปรับโหมดเพื่อดูประวัติย้อนหลัง")
+
+elif app_mode == "📜 History Logs":
+    st.subheader("📜 Transaction History Logs")
+    
+    df = pd.read_csv(HISTORY_FILE)
+    
+    col1, col2 = st.columns(2)
+    search_q = col1.text_input("🔍 Search Exporter or Running No.")
+    risk_filter = col2.selectbox("Filter Risk", ["All", "LOW 🟢", "MED 🟡", "HIGH 🔴"])
+    
+    if search_q:
+        df = df[df['exporter'].str.contains(search_q, case=False) | df['running_no'].str.contains(search_q, case=False)]
+    if risk_filter != "All":
+        df = df[df['risk_level'] == risk_filter]
+        
+    st.dataframe(
+        df[["running_no", "timestamp", "shipment_mode", "exporter", "destination", "readiness_score", "risk_level", "human_status"]],
+        use_container_width=True,
+        hide_index=True
+    )
