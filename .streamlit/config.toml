@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#2563EB"      # สีน้ำเงิน (ปุ่มกด, กราฟ, ไฮไลต์)
+backgroundColor = "#F8FAFC"   # สีเทาอ่อนมาก (พื้นหลังหน้าต่างรวม)
+secondaryBackgroundColor = "#FFFFFF" # สีขาว (พื้นหลัง Sidebar และ Card)
+textColor = "#1E293B"         # สีเทาเข้ม (ตัวอักษรหลัก)
+font = "sans serif"
