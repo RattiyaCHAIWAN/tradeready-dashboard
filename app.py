@@ -65,7 +65,7 @@ st.markdown(
     
     /* กรอบข้อมูลหลักเป็นพื้นหลังสีขาว ตัวหนังสือสีเข้ม คมชัดเด่นตา */
     [data-testid="stVerticalBlockBorderWrapper"] {{
-        background-color: #000000 !important; 
+        background-color: #FFFFFF !important; 
         border: 2px solid #cbd5e1 !important; 
         border-radius: 12px !important;
         padding: 1.5rem !important;
