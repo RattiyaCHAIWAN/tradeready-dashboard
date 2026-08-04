@@ -67,13 +67,13 @@ st.markdown(
         padding-right: 2rem !important;
     }}
     
-    /* 5. ⭐️ CSS สำหรับกรอบ Dashboard พื้นทึบให้ข้อมูลลอยเด่นขึ้นมา ⭐️ */
+    /* 5. CSS สำหรับกรอบ Dashboard พื้นทึบให้ข้อมูลลอยเด่นขึ้นมา */
     [data-testid="stVerticalBlockBorderWrapper"] {{
-        background-color: rgba(15, 23, 42, 0.95) !important; /* สีกรมท่าเข้มเกือบดำ แบบทึบ */
-        border: 1px solid #3b82f6 !important; /* ขอบสีน้ำเงิน */
+        background-color: rgba(15, 23, 42, 0.95) !important; 
+        border: 1px solid #3b82f6 !important; 
         border-radius: 12px !important;
         padding: 1.5rem !important;
-        box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.5) !important; /* เงาให้ป๊อปอัป */
+        box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.5) !important; 
     }}
     
     h1, h2, h3, h4 {{
@@ -130,7 +130,6 @@ def generate_sample_data():
         
         ship_day = (i % 5) + 1
         
-        # เพิ่มข้อมูล Mockup ให้ตารางแสดงผลได้สมจริงขึ้น
         samples.append({
             "running_no": f"TR-202608{i:02d}-0001",
             "timestamp": f"2026-08-01 10:30:00",
@@ -145,7 +144,6 @@ def generate_sample_data():
             "ai_recommendation": ai_rec,
             "human_status": "🟢 Accepted" if i % 4 != 0 else "🟠 Overridden",
             "human_notes": "-",
-            # Mock details
             "invoice_no": f"INV-{i:03d}-881",
             "po_no": f"PO-{i:03d}-99",
             "invoice_qty": 1000 if scenario == "Normal" else 850,
@@ -308,38 +306,56 @@ if getattr(st.session_state, "show_modal", False):
 # REUSABLE DASHBOARD COMPONENT (Solid Frame)
 # ==========================================
 def render_dashboard(audit, key_prefix=""):
-    """ ฟังก์ชันช่วยสร้างหน้าต่าง Dashboard แบบมีกรอบทึบ เหมือนในตัวอย่างที่ขอ """
-    
-    # ดึงตัวแปร issues ออกมาจัดการก่อน
     issues = audit.get('issues', [])
     if isinstance(issues, str): 
-        issues = []  # Fallback safety
-    if not issues and audit['readiness_score'] < 85:
-        if audit.get('invoice_qty') != audit.get('packing_qty'):
+        issues = [] 
+    
+    # ดึงค่าออกมาแปลงเป็นตัวเลขให้ปลอดภัยก่อนจัด Format (ป้องกัน ValueError)
+    try:
+        inv_qty_val = int(float(audit.get('invoice_qty', 0)))
+        inv_qty_str = f"{inv_qty_val:,}"
+    except (ValueError, TypeError):
+        inv_qty_str = str(audit.get('invoice_qty', 'N/A'))
+
+    try:
+        pl_qty_val = int(float(audit.get('packing_qty', 0)))
+        pl_qty_str = f"{pl_qty_val:,}"
+    except (ValueError, TypeError):
+        pl_qty_str = str(audit.get('packing_qty', 'N/A'))
+
+    try:
+        amt_val = float(audit.get('total_amount', 0.0))
+        amt_str = f"{amt_val:,.2f}"
+    except (ValueError, TypeError):
+        amt_str = str(audit.get('total_amount', '0.00'))
+
+    inv_no = str(audit.get('invoice_no', 'N/A'))
+    pl_no_suffix = inv_no[-3:] if inv_no != 'N/A' and len(inv_no) >= 3 else 'N/A'
+
+    if not issues and audit.get('readiness_score', 100) < 85:
+        if str(audit.get('invoice_qty')) != str(audit.get('packing_qty')):
             issues.append("Quantity Mismatch (Invoice vs Packing List)")
         if not audit.get('has_coo', True):
             issues.append("Missing Certificate of Origin (COO)")
 
-    # ⭐️ ใช้งาน st.container(border=True) ซึ่งจะถูกครอบด้วย CSS ทึบที่เราเขียนไว้ด้านบน ⭐️
     with st.container(border=True):
-        
         # --- 1. HEADER ROW ---
         st.markdown(f"""
         <div style="color: #cbd5e1; margin-bottom: 10px;">
             <span style="background-color: #16a34a; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">🟢 3 DOCS MERGED & AUDITED</span> 
-            &nbsp;&nbsp;&nbsp; <b>Running No:</b> <span style="background-color: #334155; padding: 3px 8px; border-radius: 4px;">{audit['running_no']}</span> 
-            &nbsp;&nbsp;&nbsp; <b>Time:</b> {audit['timestamp']} 
-            &nbsp;&nbsp;&nbsp; <b>Mode:</b> {audit['shipment_mode']}
+            &nbsp;&nbsp;&nbsp; <b>Running No:</b> <span style="background-color: #334155; padding: 3px 8px; border-radius: 4px;">{audit.get('running_no', 'N/A')}</span> 
+            &nbsp;&nbsp;&nbsp; <b>Time:</b> {audit.get('timestamp', 'N/A')} 
+            &nbsp;&nbsp;&nbsp; <b>Mode:</b> {audit.get('shipment_mode', 'N/A')}
         </div>
         """, unsafe_allow_html=True)
         st.divider()
 
         # --- 2. KPI ROW ---
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("READINESS SCORE", f"{audit['readiness_score']}/100")
-        c2.metric("COMPLETION RATE", "83.3%" if audit['readiness_score'] < 85 else "100%")
-        c3.metric("RISK LEVEL", audit['risk_level'])
-        c4.metric("EST. BORDER DELAY", f"{audit['est_delay']} Hours")
+        c1.metric("READINESS SCORE", f"{audit.get('readiness_score', 0)}/100")
+        c2.metric("COMPLETION RATE", "83.3%" if audit.get('readiness_score', 0) < 85 else "100%")
+        c3.metric("RISK LEVEL", audit.get('risk_level', 'N/A'))
+        c4.metric("EST. BORDER DELAY", f"{audit.get('est_delay', 0)} Hours")
         
         st.divider()
 
@@ -349,34 +365,29 @@ def render_dashboard(audit, key_prefix=""):
         with col_data:
             st.markdown("### 📄 Extracted Data Across Files")
             st.markdown(f"""
-            * **Invoice No:** `{audit.get('invoice_no', 'N/A')}`
-            * **Packing List No:** `PL-{audit.get('invoice_no', 'N/A')[-3:]}`
-            * **Invoice Total Qty:** `{audit.get('invoice_qty', 'N/A'):,} PCS`
-            * **PL Total Qty:** `{audit.get('packing_qty', 'N/A'):,} PCS`
-            * **Total Amount:** `${audit.get('total_amount', 0.0):,.2f} USD`
+            * **Invoice No:** `{inv_no}`
+            * **Packing List No:** `PL-{pl_no_suffix}`
+            * **Invoice Total Qty:** `{inv_qty_str} PCS`
+            * **PL Total Qty:** `{pl_qty_str} PCS`
+            * **Total Amount:** `${amt_str} USD`
             * **Main HS Code:** `{audit.get('hs_code', 'N/A')}`
             * **Destination Origin:** `{audit.get('destination', 'N/A')}`
             """)
 
         with col_audit:
             st.markdown("### 🔍 Cross-Document Multi-Audit")
-            
-            # Badge 1: Quantity
-            if audit.get('invoice_qty') != audit.get('packing_qty'):
-                st.error(f"🔴 Quantity Mismatch (Invoice vs PL): {audit.get('invoice_qty')} vs {audit.get('packing_qty')}")
+            if str(audit.get('invoice_qty')) != str(audit.get('packing_qty')):
+                st.error(f"🔴 Quantity Mismatch (Invoice vs PL): {audit.get('invoice_qty', 'N/A')} vs {audit.get('packing_qty', 'N/A')}")
             else:
-                st.success(f"🟢 Quantity Match (Invoice vs PL): {audit.get('invoice_qty', 'N/A')} PCS")
+                st.success(f"🟢 Quantity Match (Invoice vs PL): {inv_qty_str} PCS")
                 
-            # Badge 2: Exporter Match
             st.success("🟢 Exporter & Consignee: Matches Across All Docs")
             
-            # Badge 3: COO
             if not audit.get('has_coo', True) or "COO" in str(issues):
                 st.warning("🟡 Certificate of Origin (COO): Missing or Invalid")
             else:
                 st.success("🟢 Certificate of Origin (COO): Valid for FTA")
                 
-            # Badge 4: HS Code
             st.success(f"🟢 HS Code {audit.get('hs_code', '8409.91')}: Matched Invoice vs COO")
 
         st.divider()
@@ -386,7 +397,7 @@ def render_dashboard(audit, key_prefix=""):
         
         with col_ai:
             st.markdown("### 🤖 AI Recommendation (Alternative 1 of 3)")
-            st.info(f"👉 **{audit['ai_recommendation'].upper()}**")
+            st.info(f"👉 **{audit.get('ai_recommendation', 'N/A').upper()}**")
             
             if issues:
                 st.markdown("**Reason & Notes:**")
@@ -428,7 +439,6 @@ def render_dashboard(audit, key_prefix=""):
         </div>
         """, unsafe_allow_html=True)
 
-
 # ==========================================
 # 7. MAIN APP ROUTING
 # ==========================================
@@ -436,7 +446,6 @@ st.markdown("## 🚢 TradeReady AI <span style='font-size: 14px; color: #cbd5e1;
 
 if app_mode == "📄 Audit New Document":
     if 'active_audit' in st.session_state:
-        # เรียกใช้คอมโพเนนต์ Dashboard ที่สร้างไว้
         render_dashboard(st.session_state.active_audit, key_prefix="main_")
     else:
         st.info("👈 กรุณาอัปโหลดไฟล์ PDF ด้านซ้ายมือ หรือเลือกดูรายการจากเมนู History Logs")
@@ -507,7 +516,6 @@ elif app_mode == "📜 History Logs":
         else:
             st.session_state.show_inline_dashboard = False
 
-        # --- IN-LINE DASHBOARD ---
         if getattr(st.session_state, 'show_inline_dashboard', False):
             st.markdown("---")
             
@@ -519,7 +527,6 @@ elif app_mode == "📜 History Logs":
                     st.session_state.show_inline_dashboard = False
                     st.rerun()
             
-            # เรียกใช้คอมโพเนนต์ Dashboard ที่สร้างไว้
             render_dashboard(st.session_state.active_audit, key_prefix="inline_")
                     
     else:
