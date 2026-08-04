@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-json
+import json
 import os
 from datetime import datetime, date
 from pydantic import BaseModel
@@ -63,7 +63,7 @@ st.markdown(
         padding-right: 2rem !important;
     }}
     
-    /* ⭐️ ปรับกรอบข้อมูลหลักให้เป็นพื้นหลังสีขาว ตัวหนังสือสีเข้ม คมชัดเด่นตา ⭐️ */
+    /* กรอบข้อมูลหลักเป็นพื้นหลังสีขาว ตัวหนังสือสีเข้ม คมชัดเด่นตา */
     [data-testid="stVerticalBlockBorderWrapper"] {{
         background-color: #ffffff !important; 
         border: 2px solid #cbd5e1 !important; 
@@ -72,7 +72,6 @@ st.markdown(
         box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3) !important; 
     }}
 
-    /* ปรับสีตัวอักษรภายในกรอบสีขาวให้เป็นสีเข้ม */
     [data-testid="stVerticalBlockBorderWrapper"] h3, 
     [data-testid="stVerticalBlockBorderWrapper"] p, 
     [data-testid="stVerticalBlockBorderWrapper"] li, 
@@ -401,7 +400,7 @@ def render_dashboard(audit, key_prefix=""):
 
         st.divider()
 
-        # --- 4. ACTION & DECISION ROW (เปลี่ยนเป็น Radio แบบคลิกเลือกได้ทันทีโดยไม่ต้องกด Dropdown) ---
+        # --- 4. ACTION & DECISION ROW ---
         col_ai, col_human = st.columns([1.5, 1])
         
         with col_ai:
@@ -421,10 +420,7 @@ def render_dashboard(audit, key_prefix=""):
                 
         with col_human:
             st.markdown("### 👤 Human Decision")
-            
-            # ⭐️ ใช้ Radio button แทน Selectbox เพื่อให้เลือกได้ทันทีในหน้าจอเดียวโดยไม่ต้องกด Dropdown ⭐️
             options_list = ["Ready to Export", "Requires Review & Correction", "Hold Shipment / High Risk"]
-            current_status = str(audit.get('human_notes', ''))
             default_idx = 0
             for idx, opt in enumerate(options_list):
                 if opt.lower() in audit.get('ai_recommendation', '').lower():
@@ -439,7 +435,7 @@ def render_dashboard(audit, key_prefix=""):
                 st.session_state.active_audit['human_notes'] = remarks
                 st.success("บันทึกอัปเดตเรียบร้อยแล้ว!")
 
-        # --- 5. DOCUMENT CHECKLIST (BOTTOM - ขยายขนาดให้เด่นชัดขึ้น) ---
+        # --- 5. DOCUMENT CHECKLIST (BOTTOM) ---
         st.divider()
         coo_color = "#ca8a04" if not audit.get('has_coo', True) else "#166534"
         coo_text = "❌ COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
