@@ -3,5 +3,5 @@ primaryColor = "#007BFF"                # สีน้ำเงินสว่�
 backgroundColor = "#123A62"             # สีพื้นหลังหลัก
 secondaryBackgroundColor = "#0B2A4C"    # สีพื้นหลังแถบซ้าย (เข้มขึ้นเล็กน้อย)
 textColor = "#FFFFFF"                   # สีตัวอักษรหลัก (ขาว)
-font = "Aptos"
+font = "Aptos Narrow"
 ```http://googleusercontent.com/image_generation_content/459
