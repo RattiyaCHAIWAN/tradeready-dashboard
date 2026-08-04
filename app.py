@@ -225,22 +225,22 @@ st.markdown(
     <style>
     /* ขยายฟอนต์ข้อความทั่วไป */
     html, body, [class*="st-"], .stMarkdown p {
-        font-size: 18px !important;
+        font-size: 14px !important;
     }
     
     /* ขยายฟอนต์ใน Sidebar ทั้งหมด */
     [data-testid="stSidebar"] * {
-        font-size: 17px !important;
+        font-size: 12px !important;
     }
     
     /* ขยายหัวข้อใน Sidebar */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        font-size: 22px !important;
+        font-size: 18px !important;
     }
     
     /* ขยายขนาด Label ของพวกช่องกรอกข้อมูล / Selectbox / Radio */
     .stRadio label, .stSelectbox label, .stTextInput label, .stFileUploader label {
-        font-size: 18px !important;
+        font-size: 14px !important;
         font-weight: bold;
     }
     </style>
