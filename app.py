@@ -11,7 +11,7 @@ from google.genai import types
 # 0. PAGE CONFIGURATION & STATE INITIALIZATION
 # ==========================================
 st.set_page_config(
-    page_title="TradeReady AI", 
+    page_title="TradeReady AI | Enterprise Export Intelligence", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
@@ -24,7 +24,7 @@ if "nav_choice" not in st.session_state:
     st.session_state.nav_choice = "📄 Audit New Document"
 
 # ==========================================
-# 0.1 CUSTOM BACKGROUND & WHITE CARDS CSS
+# 0.1 ADVANCED ENTERPRISE UI & GLASSMORPHISM CSS
 # ==========================================
 background_image_url = "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=2070&auto=format&fit=crop"
 
@@ -40,15 +40,15 @@ st.markdown(
     }}
     
     [data-testid="stMain"], section.main {{
-        background-color: rgba(18, 58, 98, 0.70) !important;
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
+        background-color: rgba(11, 25, 41, 0.78) !important;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
     }}
     
     [data-testid="stSidebar"] {{
-        background-color: rgba(18, 58, 98, 0.65) !important;
-        backdrop-filter: blur(8px) !important;
-        -webkit-backdrop-filter: blur(8px);
+        background-color: rgba(15, 23, 42, 0.85) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px);
     }}
     
     [data-testid="stSidebarContent"] {{
@@ -58,31 +58,39 @@ st.markdown(
     .block-container {{
         background-color: transparent !important;
         padding-top: 1.5rem !important; 
-        padding-bottom: 1.5rem !important;
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
+        padding-bottom: 2rem !important;
+        padding-left: 2.5rem !important;
+        padding-right: 2.5rem !important;
     }}
     
-    /* กรอบข้อมูลหลักเป็นพื้นหลังสีขาว ตัวหนังสือสีเข้ม คมชัดเด่นตา */
+    /* 🌟 Enterprise Card Container Styling (Glassmorphism + Deep Contrast) 🌟 */
     [data-testid="stVerticalBlockBorderWrapper"] {{
-        background-color: #ffffff !important; 
-        border: 2px solid #cbd5e1 !important; 
-        border-radius: 12px !important;
-        padding: 1.5rem !important;
-        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3) !important; 
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.90) 0%, rgba(15, 23, 42, 0.95) 100%) !important; 
+        border: 1px solid rgba(59, 130, 246, 0.3) !important; 
+        border-radius: 16px !important;
+        padding: 1.8rem !important;
+        box-shadow: 0px 12px 40px rgba(0, 0, 0, 0.6) !important; 
     }}
 
-    [data-testid="stVerticalBlockBorderWrapper"] h3, 
+    /* ปรับตัวอักษรในกรอบให้คมชัด สไตล์โมเดิร์น */
+    [data-testid="stVerticalBlockBorderWrapper"] h3 {{
+        color: #f8fafc !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.025em;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }}
+    
     [data-testid="stVerticalBlockBorderWrapper"] p, 
     [data-testid="stVerticalBlockBorderWrapper"] li, 
     [data-testid="stVerticalBlockBorderWrapper"] span,
     [data-testid="stVerticalBlockBorderWrapper"] label {{
-        color: #0f172a !important;
+        color: #cbd5e1 !important;
     }}
     
     h1, h2, h3, h4 {{
-        margin-top: 0.2rem !important;
-        margin-bottom: 0.5rem !important;
+        color: #ffffff !important;
     }}
     
     html, body, [class*="st-"], .stMarkdown p {{
@@ -312,7 +320,7 @@ if getattr(st.session_state, "show_modal", False):
     review_modal()
 
 # ==========================================
-# REUSABLE DASHBOARD COMPONENT (Solid White Frame)
+# 6. REDESIGNED DASHBOARD COMPONENT (Enterprise Grade)
 # ==========================================
 def render_dashboard(audit, key_prefix=""):
     issues = audit.get('issues', [])
@@ -347,25 +355,54 @@ def render_dashboard(audit, key_prefix=""):
             issues.append("Missing Certificate of Origin (COO)")
 
     with st.container(border=True):
-        # --- 1. HEADER ROW ---
+        # --- 1. HEADER BANNER ---
         st.markdown(f"""
-        <div style="color: #334155; margin-bottom: 10px;">
-            <span style="background-color: #16a34a; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">🟢 3 DOCS MERGED & AUDITED</span> 
-            &nbsp;&nbsp;&nbsp; <b>Running No:</b> <span style="background-color: #e2e8f0; padding: 3px 8px; border-radius: 4px; color: #0f172a;">{audit.get('running_no', 'N/A')}</span> 
-            &nbsp;&nbsp;&nbsp; <b>Time:</b> {audit.get('timestamp', 'N/A')} 
-            &nbsp;&nbsp;&nbsp; <b>Mode:</b> {audit.get('shipment_mode', 'N/A')}
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 12px 18px; border-radius: 10px; border-left: 5px solid #22c55e; margin-bottom: 1.5rem;">
+            <div>
+                <span style="background-color: #16a34a; color: white; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 13px;">🟢 3 DOCS MERGED & AUDITED</span>
+                &nbsp;&nbsp;&nbsp; <b>Running No:</b> <span style="font-family: monospace; background: #334155; padding: 2px 8px; border-radius: 4px; color: #38bdf8;">{audit.get('running_no', 'N/A')}</span>
+            </div>
+            <div style="color: #94a3b8; font-size: 14px;">
+                🕒 <b>Time:</b> {audit.get('timestamp', 'N/A')} &nbsp;|&nbsp; ✈️ <b>Mode:</b> {audit.get('shipment_mode', 'N/A')}
+            </div>
         </div>
         """, unsafe_allow_html=True)
-        st.divider()
 
-        # --- 2. KPI ROW ---
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("READINESS SCORE", f"{audit.get('readiness_score', 0)}/100")
-        c2.metric("COMPLETION RATE", "83.3%" if audit.get('readiness_score', 0) < 85 else "100%")
-        c3.metric("RISK LEVEL", audit.get('risk_level', 'N/A'))
-        c4.metric("EST. BORDER DELAY", f"{audit.get('est_delay', 0)} Hours")
+        # --- 2. EXECUTIVE KPI CARDS ---
+        score = audit.get('readiness_score', 0)
+        score_color = "#22c55e" if score >= 85 else ("#eab308" if score >= 50 else "#ef4444")
         
-        st.divider()
+        k1, k2, k3, k4 = st.columns(4)
+        with k1:
+            st.markdown(f"""
+            <div style="background: rgba(30, 41, 59, 0.7); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <div style="color: #94a3b8; font-size: 13px; font-weight: 600; text-transform: uppercase;">Readiness Score</div>
+                <div style="color: {score_color}; font-size: 28px; font-weight: 800; margin-top: 5px;">{score}<span style="font-size: 16px; color: #94a3b8;">/100</span></div>
+            </div>
+            """, unsafe_allow_html=True)
+        with k2:
+            st.markdown(f"""
+            <div style="background: rgba(30, 41, 59, 0.7); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <div style="color: #94a3b8; font-size: 13px; font-weight: 600; text-transform: uppercase;">Completion Rate</div>
+                <div style="color: #38bdf8; font-size: 28px; font-weight: 800; margin-top: 5px;">{"83.3%" if score < 85 else "100%"}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with k3:
+            st.markdown(f"""
+            <div style="background: rgba(30, 41, 59, 0.7); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <div style="color: #94a3b8; font-size: 13px; font-weight: 600; text-transform: uppercase;">Risk Level</div>
+                <div style="color: #f8fafc; font-size: 24px; font-weight: 800; margin-top: 5px;">{audit.get('risk_level', 'N/A')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with k4:
+            st.markdown(f"""
+            <div style="background: rgba(30, 41, 59, 0.7); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <div style="color: #94a3b8; font-size: 13px; font-weight: 600; text-transform: uppercase;">Est. Border Delay</div>
+                <div style="color: #fbbf24; font-size: 28px; font-weight: 800; margin-top: 5px;">{audit.get('est_delay', 0)} <span style="font-size: 16px; color: #94a3b8;">Hours</span></div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
 
         # --- 3. DATA & AUDIT CHECK ROW ---
         col_data, col_audit = st.columns(2)
@@ -398,10 +435,10 @@ def render_dashboard(audit, key_prefix=""):
                 
             st.success(f"🟢 HS Code {audit.get('hs_code', '8409.91')}: Matched Invoice vs COO")
 
-        st.divider()
+        st.markdown("<br>", unsafe_allow_html=True)
 
         # --- 4. ACTION & DECISION ROW ---
-        col_ai, col_human = st.columns([1.5, 1])
+        col_ai, col_human = st.columns([1.4, 1])
         
         with col_ai:
             st.markdown("### 🤖 AI Recommendation (Alternative 1 of 3)")
@@ -410,7 +447,7 @@ def render_dashboard(audit, key_prefix=""):
             if issues:
                 st.markdown("**Reason & Notes:**")
                 for i in issues:
-                    st.markdown(f"<span style='color:#dc2626; font-weight: bold;'>- 🔴 {i}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span style='color:#f87171; font-weight: bold;'>- 🔴 {i}</span>", unsafe_allow_html=True)
                 st.markdown("- **Responsible Party:** Logistics / Compliance Officer")
             else:
                 st.markdown("**Reason & Notes:**")
@@ -435,32 +472,32 @@ def render_dashboard(audit, key_prefix=""):
                 st.session_state.active_audit['human_notes'] = remarks
                 st.success("บันทึกอัปเดตเรียบร้อยแล้ว!")
 
-        # --- 5. DOCUMENT CHECKLIST (BOTTOM) ---
-        st.divider()
-        coo_color = "#ca8a04" if not audit.get('has_coo', True) else "#166534"
+        # --- 5. DOCUMENT CHECKLIST (BOTTOM - ขยายป้ายให้ใหญ่สะดุดตา) ---
+        st.markdown("<br>", unsafe_allow_html=True)
+        coo_color = "#d97706" if not audit.get('has_coo', True) else "#16a34a"
         coo_text = "❌ COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
         
         st.markdown("**DOCUMENT CHECKLIST (ATTACHED):**")
         st.markdown(f"""
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
-            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ Invoice</span>
-            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ Packing List</span>
-            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ PO</span>
-            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ B/L / AWB</span>
-            <span style="background-color: {coo_color}; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">{coo_text}</span>
+        <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px;">
+            <span style="background-color: #16a34a; color: white; padding: 12px 20px; border-radius: 8px; font-size: 15px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ Invoice</span>
+            <span style="background-color: #16a34a; color: white; padding: 12px 20px; border-radius: 8px; font-size: 15px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ Packing List</span>
+            <span style="background-color: #16a34a; color: white; padding: 12px 20px; border-radius: 8px; font-size: 15px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ PO</span>
+            <span style="background-color: #16a34a; color: white; padding: 12px 20px; border-radius: 8px; font-size: 15px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ B/L / AWB</span>
+            <span style="background-color: {coo_color}; color: white; padding: 12px 20px; border-radius: 8px; font-size: 15px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">{coo_text}</span>
         </div>
         """, unsafe_allow_html=True)
 
 # ==========================================
-# 6. MAIN APP ROUTING
+# 7. MAIN APP ROUTING
 # ==========================================
-st.markdown("## 🚢 TradeReady AI <span style='font-size: 14px; color: #cbd5e1;'>| Export Documentation & Customs Readiness Assistant</span>", unsafe_allow_html=True)
+st.markdown("## 🚢 TradeReady AI <span style='font-size: 14px; color: #38bdf8;'>| Enterprise Export Documentation & Customs Intelligence</span>", unsafe_allow_html=True)
 
 if app_mode == "📄 Audit New Document":
     if 'active_audit' in st.session_state:
         render_dashboard(st.session_state.active_audit, key_prefix="main_")
     else:
-        st.info("👈 กรุณาอัปโหลดไฟล์ PDF ด้านซ้ายมือ หรือเลือกดูรายการจากเมนู History Logs")
+        st.info("👈 กรุณาอัปโหลดไฟล์ PDF ด้านซ้ายมือ หรือเลือกดูรายการจากเมนู History Logs เพื่อตรวจสอบชิปเมนต์")
 
 elif app_mode == "📜 History Logs":
     st.markdown("#### 📜 Transaction History Logs & Daily Release Control")
