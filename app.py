@@ -219,92 +219,45 @@ def review_modal():
 # 6. MAIN UI & SIDEBAR
 # ==========================================
 
-# 🎨 1. เพิ่ม CSS เพื่อปรับตัวหนังสือทั้งหน้าและ Sidebar ให้ใหญ่ขึ้น
+# 🎨 เพิ่ม CSS ปรับ Sidebar ให้โปร่งแสง + ขยายฟอนต์
 st.markdown(
     """
     <style>
-    /* ขยายฟอนต์ข้อความทั่วไป */
-    html, body, [class*="st-"], .stMarkdown p {
-        font-size: 14px !important;
+    /* 1. 🧊 ปรับ Sidebar ให้โปร่งแสง และทำเอฟเฟกต์กระจกฝ้า (Frosted Glass) */
+    [data-testid="stSidebar"] {
+        background-color: rgba(15, 23, 42, 0.65) !important; /* ปรับความโปร่งแสงที่เลข 0.65 (65%) */
+        backdrop-filter: blur(8px) !important;              /* เพิ่มความเบลอฉากหลังให้ดูพรีเมียม */
+        -webkit-backdrop-filter: blur(8px);
     }
     
-    /* ขยายฟอนต์ใน Sidebar ทั้งหมด */
+    [data-testid="stSidebarContent"] {
+        background-color: transparent !important;
+    }
+
+    /* 2. ขยายฟอนต์ข้อความทั่วไป */
+    html, body, [class*="st-"], .stMarkdown p {
+        font-size: 18px !important;
+    }
+    
+    /* ขยายฟอนต์ใน Sidebar */
     [data-testid="stSidebar"] * {
-        font-size: 12px !important;
+        font-size: 17px !important;
     }
     
     /* ขยายหัวข้อใน Sidebar */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        font-size: 18px !important;
+        font-size: 22px !important;
     }
     
-    /* ขยายขนาด Label ของพวกช่องกรอกข้อมูล / Selectbox / Radio */
+    /* ขยาย Label */
     .stRadio label, .stSelectbox label, .stTextInput label, .stFileUploader label {
-        font-size: 14px !important;
+        font-size: 18px !important;
         font-weight: bold;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
-
-st.title("🚢 TradeReady AI")
-st.caption("Export Documentation & Customs Readiness Assistant")
-
-# --- SIDEBAR ---
-with st.sidebar:
-  st.header("⚙️ Control Panel")
-
-  # 🔑 2. เพิ่มช่องใส่ Gemini API Key ตรงนี้
-  api_key = st.text_input(
-      "🔑 Gemini API Key",
-      type="password",
-      placeholder="AIzaSy...",
-      help="กรอก Gemini API Key เพื่อเปิดใช้งาน AI",
-  )
-  if api_key:
-    st.session_state.api_key = api_key
-
-  st.divider()
-
-  app_mode = st.radio(
-      "Navigation", ["📄 Audit New Document", "📜 History Logs"]
-  )
-  st.divider()
-  st.markdown("**📂 Document Upload (Multi-File)**")
-  uploaded_files = st.file_uploader(
-      "Upload Invoice, PL, COO", type=["pdf"], accept_multiple_files=True
-  )
-  st.divider()
-
-  st.session_state.strictness = st.selectbox(
-      "Customs Strictness Level", ["Lenient", "Standard", "Strict"], index=1
-  )
-
-  if uploaded_files and st.button("🚀 Release to AI", use_container_width=True):
-    # เช็คว่าผู้ใช้กรอก API Key หรือยัง
-    if not st.session_state.get("api_key"):
-      st.error("⚠️ กรุณากรอก Gemini API Key ด้านบนก่อนเริ่มประมวลผล!")
-    else:
-      with st.spinner("AI is analyzing documents..."):
-        # หมายเหตุ: นำ st.session_state.api_key ไปใช้งานต่อกับ Google GenAI Client ได้ที่นี่
-        st.session_state.temp_extracted_data = {
-            "doc_type": "Multiple",
-            "shipment_mode": "AIR ✈️",
-            "invoice_no": "INV-2026-991",
-            "po_no": "PO-991",
-            "exporter_name": "Chiang Mai OEM Electronics",
-            "destination": "Japan",
-            "invoice_qty": 500,
-            "packing_qty": 450,
-            "total_amount": 12500.0,
-            "hs_code": "8542.31",
-            "has_coo": False,
-        }
-        st.session_state.show_modal = True
-
-if getattr(st.session_state, "show_modal", False):
-  review_modal()
 
 # ==========================================
 # 7. MAIN DASHBOARD CONTENT
