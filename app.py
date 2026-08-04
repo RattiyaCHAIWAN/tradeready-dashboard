@@ -50,15 +50,7 @@ st.markdown(
         backdrop-filter: blur(8px) !important;
         -webkit-backdrop-filter: blur(8px);
     }}
-    /* กรอบข้อมูลหลักเป็นพื้นหลังสีขาว ตัวหนังสือสีเข้ม คมชัดเด่นตา */
-    [data-testid="stVerticalBlockBorderWrapper"] {{
-        background-color: #ffffff !important; 
-        border: 2px solid #cbd5e1 !important; 
-        border-radius: 12px !important;
-        padding: 1.5rem !important;
-        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3) !important;
-     }}
-
+    
     [data-testid="stSidebarContent"] {{
         background-color: transparent !important;
     }}
@@ -69,7 +61,15 @@ st.markdown(
         padding-bottom: 1.5rem !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
-   
+    }}
+    
+    /* กรอบข้อมูลหลักเป็นพื้นหลังสีขาว ตัวหนังสือสีเข้ม คมชัดเด่นตา */
+    [data-testid="stVerticalBlockBorderWrapper"] {{
+        background-color: #ffffff !important; 
+        border: 2px solid #cbd5e1 !important; 
+        border-radius: 12px !important;
+        padding: 1.5rem !important;
+        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3) !important; 
     }}
 
     [data-testid="stVerticalBlockBorderWrapper"] h3, 
