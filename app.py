@@ -1,8 +1,6 @@
 import json
 import os
 from datetime import date, datetime
-from google import genai
-from google.genai import types
 import pandas as pd
 from pydantic import BaseModel
 import streamlit as st
@@ -65,7 +63,7 @@ st.markdown(
         padding-right: 2rem !important;
     }}
     
-    /* 3. INPUTS & TEXTAREA INSIDE WHITE CARD */
+    /* 3. INPUTS & TEXTAREA STYLING */
     div[data-testid="stVerticalBlockBorderWrapper"] textarea,
     div[data-testid="stVerticalBlockBorderWrapper"] input {{
         background-color: #F8FAFC !important;
@@ -74,7 +72,7 @@ st.markdown(
         border-radius: 8px !important;
     }}
 
-    /* 4. ALERT BOXES INSIDE WHITE CARD */
+    /* 4. ALERT BOXES */
     div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stNotification"] {{
         border-radius: 10px !important;
     }}
@@ -424,14 +422,10 @@ def render_dashboard(audit, key_prefix=""):
         if not audit.get("has_coo", True):
             issues.append("Missing Certificate of Origin (COO)")
 
-    # ---------------------------------------------------------
-    # PART 1: HTML BUILDER (การันตีพื้นหลังสีขาว 100% ให้อ่านง่าย)
-    # ---------------------------------------------------------
     coo_color = "#D97706" if not audit.get("has_coo", True) else "#16A34A"
     coo_text = "❌ COO (Missing)" if not audit.get("has_coo", True) else "✓ COO (Verified)"
     comp_rate = "83.3%" if audit.get("readiness_score", 0) < 85 else "100%"
 
-    # สร้างการ์ดแสดงผล Audit ย่อย
     audit_html = ""
     if str(audit.get("invoice_qty")) != str(audit.get("packing_qty")):
         audit_html += f'<div style="background: #FEF2F2; color: #DC2626; padding: 12px 16px; border: 1px solid #FCA5A5; border-radius: 8px; font-weight: bold; margin-bottom: 8px; font-size: 14px;">🔴 Quantity Mismatch (Invoice vs PL): {audit.get("invoice_qty", "N/A")} vs {audit.get("packing_qty", "N/A")}</div>'
@@ -447,87 +441,81 @@ def render_dashboard(audit, key_prefix=""):
 
     audit_html += f'<div style="background: #F0FDF4; color: #16A34A; padding: 12px 16px; border: 1px solid #86EFAC; border-radius: 8px; font-weight: bold; margin-bottom: 8px; font-size: 14px;">🟢 HS Code {audit.get("hs_code", "8409.91")}: Matched Invoice vs COO</div>'
 
-    # สร้างกล่อง HTML Dashboard หลัก
+# ⚠️ สำคัญมาก: โค้ดส่วนนี้ห้ามเคาะวรรคด้านหน้า (Indent) เพื่อป้องกันไม่ให้ Markdown แปลงเป็น Code Block ⚠️
     html_dashboard = f"""
-    <div style="background-color: #FFFFFF; border-radius: 16px; padding: 24px; box-shadow: 0px 10px 30px rgba(0,0,0,0.25); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0F172A; margin-bottom: 20px; border: 1px solid #E2E8F0;">
-        
-        <!-- 1. HEADER BAR -->
-        <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F8FAFC; padding: 14px 20px; border-radius: 10px; border: 1px solid #E2E8F0; margin-bottom: 25px; flex-wrap: wrap; gap: 10px;">
-            <div>
-                <span style="background-color: #16A34A; color: white; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 13px;">🟢 3 DOCS MERGED & AUDITED</span> 
-                <span style="margin-left: 15px; color: #475569; font-size: 14px;"><b>Running No:</b></span> 
-                <span style="background-color: #E2E8F0; padding: 4px 10px; border-radius: 6px; color: #0F172A; font-weight: bold; font-size: 14px; margin-left: 5px;">{audit.get('running_no', 'N/A')}</span> 
-            </div>
-            <div style="font-size: 14px; color: #475569;">
-                <b>Time:</b> {audit.get('timestamp', 'N/A')} &nbsp;|&nbsp; <b>Mode:</b> <span style="font-weight: bold; color: #1E3A8A;">{audit.get('shipment_mode', 'N/A')}</span>
-            </div>
+<div style="background-color: #FFFFFF; border-radius: 16px; padding: 24px; box-shadow: 0px 10px 30px rgba(0,0,0,0.25); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0F172A; margin-bottom: 20px; border: 1px solid #E2E8F0;">
+    <!-- 1. HEADER BAR -->
+    <div style="display: flex; justify-content: space-between; align-items: center; background-color: #F8FAFC; padding: 14px 20px; border-radius: 10px; border: 1px solid #E2E8F0; margin-bottom: 25px; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <span style="background-color: #16A34A; color: white; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 13px;">🟢 3 DOCS MERGED & AUDITED</span> 
+            <span style="margin-left: 15px; color: #475569; font-size: 14px;"><b>Running No:</b></span> 
+            <span style="background-color: #E2E8F0; padding: 4px 10px; border-radius: 6px; color: #0F172A; font-weight: bold; font-size: 14px; margin-left: 5px;">{audit.get('running_no', 'N/A')}</span> 
         </div>
-
-        <!-- 2. KPI METRICS -->
-        <div style="display: flex; gap: 16px; margin-bottom: 25px; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 150px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 5px solid #DC2626; border-radius: 10px; padding: 16px;">
-                <div style="color: #64748B; font-size: 12px; font-weight: 800; letter-spacing: 0.5px;">READINESS SCORE</div>
-                <div style="color: #0F172A; font-size: 26px; font-weight: 900; margin-top: 5px;">{audit.get('readiness_score', 0)}/100</div>
-            </div>
-            <div style="flex: 1; min-width: 150px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 5px solid #2563EB; border-radius: 10px; padding: 16px;">
-                <div style="color: #64748B; font-size: 12px; font-weight: 800; letter-spacing: 0.5px;">COMPLETION RATE</div>
-                <div style="color: #0F172A; font-size: 26px; font-weight: 900; margin-top: 5px;">{comp_rate}</div>
-            </div>
-            <div style="flex: 1; min-width: 150px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 5px solid #D97706; border-radius: 10px; padding: 16px;">
-                <div style="color: #64748B; font-size: 12px; font-weight: 800; letter-spacing: 0.5px;">RISK LEVEL</div>
-                <div style="color: #0F172A; font-size: 26px; font-weight: 900; margin-top: 5px;">{audit.get('risk_level', 'N/A')}</div>
-            </div>
-            <div style="flex: 1; min-width: 150px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 5px solid #D97706; border-radius: 10px; padding: 16px;">
-                <div style="color: #64748B; font-size: 12px; font-weight: 800; letter-spacing: 0.5px;">EST. BORDER DELAY</div>
-                <div style="color: #0F172A; font-size: 26px; font-weight: 900; margin-top: 5px;">{audit.get('est_delay', 0)} Hours</div>
-            </div>
-        </div>
-
-        <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;">
-
-        <!-- 3. CHECKLIST -->
-        <div style="font-weight: 800; color: #334155; margin-bottom: 12px; font-size: 14px;">DOCUMENT CHECKLIST (ATTACHED):</div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 25px;">
-            <span style="background-color: #16A34A; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ Invoice</span>
-            <span style="background-color: #16A34A; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ Packing List</span>
-            <span style="background-color: #16A34A; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ PO</span>
-            <span style="background-color: #16A34A; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ B/L / AWB</span>
-            <span style="background-color: {coo_color}; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">{coo_text}</span>
-        </div>
-        
-        <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;">
-
-        <!-- 4. DATA & AUDIT CHECK -->
-        <div style="display: flex; flex-wrap: wrap; gap: 30px;">
-            <!-- Left Column -->
-            <div style="flex: 1; min-width: 300px;">
-                <div style="color: #1E3A8A; font-size: 18px; font-weight: 800; margin-bottom: 15px;">📄 Extracted Data Across Files</div>
-                <table style="width: 100%; border-collapse: collapse; font-size: 15px; color: #334155; line-height: 2.2;">
-                    <tr><td width="45%">• Invoice No:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">{inv_no}</span></td></tr>
-                    <tr><td>• Packing List No:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">PL-{pl_no_suffix}</span></td></tr>
-                    <tr><td>• Invoice Total Qty:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">{inv_qty_str} PCS</span></td></tr>
-                    <tr><td>• PL Total Qty:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">{pl_qty_str} PCS</span></td></tr>
-                    <tr><td>• Total Amount:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">${amt_str} USD</span></td></tr>
-                    <tr><td>• Main HS Code:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">{audit.get('hs_code', 'N/A')}</span></td></tr>
-                    <tr><td>• Destination Origin:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">{audit.get('destination', 'N/A')}</span></td></tr>
-                </table>
-            </div>
-            
-            <!-- Right Column -->
-            <div style="flex: 1; min-width: 300px;">
-                <div style="color: #1E3A8A; font-size: 18px; font-weight: 800; margin-bottom: 15px;">🔍 Cross-Document Multi-Audit</div>
-                {audit_html}
-            </div>
+        <div style="font-size: 14px; color: #475569;">
+            <b>Time:</b> {audit.get('timestamp', 'N/A')} &nbsp;|&nbsp; <b>Mode:</b> <span style="font-weight: bold; color: #1E3A8A;">{audit.get('shipment_mode', 'N/A')}</span>
         </div>
     </div>
-    """
+
+    <!-- 2. KPI METRICS -->
+    <div style="display: flex; gap: 16px; margin-bottom: 25px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 150px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 5px solid #DC2626; border-radius: 10px; padding: 16px;">
+            <div style="color: #64748B; font-size: 12px; font-weight: 800; letter-spacing: 0.5px;">READINESS SCORE</div>
+            <div style="color: #0F172A; font-size: 26px; font-weight: 900; margin-top: 5px;">{audit.get('readiness_score', 0)}/100</div>
+        </div>
+        <div style="flex: 1; min-width: 150px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 5px solid #2563EB; border-radius: 10px; padding: 16px;">
+            <div style="color: #64748B; font-size: 12px; font-weight: 800; letter-spacing: 0.5px;">COMPLETION RATE</div>
+            <div style="color: #0F172A; font-size: 26px; font-weight: 900; margin-top: 5px;">{comp_rate}</div>
+        </div>
+        <div style="flex: 1; min-width: 150px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 5px solid #D97706; border-radius: 10px; padding: 16px;">
+            <div style="color: #64748B; font-size: 12px; font-weight: 800; letter-spacing: 0.5px;">RISK LEVEL</div>
+            <div style="color: #0F172A; font-size: 26px; font-weight: 900; margin-top: 5px;">{audit.get('risk_level', 'N/A')}</div>
+        </div>
+        <div style="flex: 1; min-width: 150px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 5px solid #D97706; border-radius: 10px; padding: 16px;">
+            <div style="color: #64748B; font-size: 12px; font-weight: 800; letter-spacing: 0.5px;">EST. BORDER DELAY</div>
+            <div style="color: #0F172A; font-size: 26px; font-weight: 900; margin-top: 5px;">{audit.get('est_delay', 0)} Hours</div>
+        </div>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;">
+
+    <!-- 3. CHECKLIST -->
+    <div style="font-weight: 800; color: #334155; margin-bottom: 12px; font-size: 14px;">DOCUMENT CHECKLIST (ATTACHED):</div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 25px;">
+        <span style="background-color: #16A34A; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ Invoice</span>
+        <span style="background-color: #16A34A; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ Packing List</span>
+        <span style="background-color: #16A34A; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ PO</span>
+        <span style="background-color: #16A34A; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ B/L / AWB</span>
+        <span style="background-color: {coo_color}; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">{coo_text}</span>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;">
+
+    <!-- 4. DATA & AUDIT CHECK -->
+    <div style="display: flex; flex-wrap: wrap; gap: 30px;">
+        <div style="flex: 1; min-width: 300px;">
+            <div style="color: #1E3A8A; font-size: 18px; font-weight: 800; margin-bottom: 15px;">📄 Extracted Data Across Files</div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 15px; color: #334155; line-height: 2.2;">
+                <tr><td width="45%">• Invoice No:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">{inv_no}</span></td></tr>
+                <tr><td>• Packing List No:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">PL-{pl_no_suffix}</span></td></tr>
+                <tr><td>• Invoice Total Qty:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">{inv_qty_str} PCS</span></td></tr>
+                <tr><td>• PL Total Qty:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">{pl_qty_str} PCS</span></td></tr>
+                <tr><td>• Total Amount:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">${amt_str} USD</span></td></tr>
+                <tr><td>• Main HS Code:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">{audit.get('hs_code', 'N/A')}</span></td></tr>
+                <tr><td>• Destination Origin:</td><td><span style="background-color: #EFF6FF; color: #1E40AF; padding: 3px 10px; border-radius: 5px; font-weight: bold; border: 1px solid #BFDBFE;">{audit.get('destination', 'N/A')}</span></td></tr>
+            </table>
+        </div>
+        
+        <div style="flex: 1; min-width: 300px;">
+            <div style="color: #1E3A8A; font-size: 18px; font-weight: 800; margin-bottom: 15px;">🔍 Cross-Document Multi-Audit</div>
+            {audit_html}
+        </div>
+    </div>
+</div>
+"""
     
     st.markdown(html_dashboard, unsafe_allow_html=True)
     
-    # ---------------------------------------------------------
-    # PART 2: ACTION & DECISION ROW (Streamlit Widgets)
-    # ---------------------------------------------------------
-    # ใช้ CSS Trick (:has) บังคับให้ Container ของ Action Row ด้านล่างสุดเป็นสีขาว
+    # CSS Trick ให้ Container ด้านล่างกลายเป็นสีขาว
     st.markdown('''
         <style>
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.action-marker) {
