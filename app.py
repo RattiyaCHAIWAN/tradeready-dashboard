@@ -6,7 +6,14 @@ from datetime import datetime
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
-
+# ==========================================
+# 0. PAGE CONFIGURATION (ต้องวางไว้ตรงนี้เลยครับ เป็นคำสั่งแรกของ Streamlit)
+# ==========================================
+st.set_page_config(
+    page_title="TradeReady AI", 
+    layout="wide", # 👈 ตัวนี้แหละครับที่จะทำให้จอขยายกว้างเต็มพื้นที่
+    initial_sidebar_state="expanded"
+)
 # ==========================================
 # 1. SETUP & CONSTANTS
 # ==========================================
