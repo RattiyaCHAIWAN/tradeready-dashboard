@@ -36,7 +36,7 @@ st.markdown(
     
     /* เพิ่มพื้นหลังสีกรมท่าโปร่งใสทับส่วนเนื้อหา เพื่อให้ตัวอักษรยังคงอ่านง่าย */
     .block-container {{
-        background-color: rgba(18, 58, 98, 0.85); /* #123A62 ที่มีความโปร่งใส 85% */
+        background-color: rgba(18, 58, 98, 0.65); /* #123A62 ที่มีความโปร่งใส 85% */
         padding-top: 3rem;
         padding-bottom: 3rem;
         padding-left: 3rem;
