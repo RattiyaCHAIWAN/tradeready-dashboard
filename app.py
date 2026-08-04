@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import json
+json
 import os
 from datetime import datetime, date
 from pydantic import BaseModel
@@ -24,7 +24,7 @@ if "nav_choice" not in st.session_state:
     st.session_state.nav_choice = "📄 Audit New Document"
 
 # ==========================================
-# 0.1 CUSTOM BACKGROUND IMAGE & OVERLAY (CSS)
+# 0.1 CUSTOM BACKGROUND & WHITE CARDS CSS
 # ==========================================
 background_image_url = "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=2070&auto=format&fit=crop"
 
@@ -63,27 +63,31 @@ st.markdown(
         padding-right: 2rem !important;
     }}
     
+    /* ⭐️ ปรับกรอบข้อมูลหลักให้เป็นพื้นหลังสีขาว ตัวหนังสือสีเข้ม คมชัดเด่นตา ⭐️ */
     [data-testid="stVerticalBlockBorderWrapper"] {{
-        background-color: rgba(15, 23, 42, 0.95) !important; 
-        border: 1px solid #3b82f6 !important; 
+        background-color: #ffffff !important; 
+        border: 2px solid #cbd5e1 !important; 
         border-radius: 12px !important;
         padding: 1.5rem !important;
-        box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.5) !important; 
+        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3) !important; 
+    }}
+
+    /* ปรับสีตัวอักษรภายในกรอบสีขาวให้เป็นสีเข้ม */
+    [data-testid="stVerticalBlockBorderWrapper"] h3, 
+    [data-testid="stVerticalBlockBorderWrapper"] p, 
+    [data-testid="stVerticalBlockBorderWrapper"] li, 
+    [data-testid="stVerticalBlockBorderWrapper"] span,
+    [data-testid="stVerticalBlockBorderWrapper"] label {{
+        color: #0f172a !important;
     }}
     
     h1, h2, h3, h4 {{
         margin-top: 0.2rem !important;
         margin-bottom: 0.5rem !important;
-        padding-bottom: 0 !important;
     }}
     
     html, body, [class*="st-"], .stMarkdown p {{
         font-size: 15px !important;
-    }}
-    
-    .stRadio label, .stSelectbox label, .stTextInput label, .stFileUploader label, .stDateInput label {{
-        font-size: 15px !important;
-        font-weight: bold;
     }}
 
     .stDataFrame {{
@@ -110,16 +114,13 @@ MODE_MULTIPLIER = {"AIR ✈️": 0.5, "TRUCK 🚛": 1.0, "SEA 🚢": 1.5}
 # 2. DATA GENERATOR & AUTO-HEAL SYSTEM
 # ==========================================
 def validate_and_repair_csv():
-    """ 🛠️ ระบบ Auto-Heal: ตรวจสอบว่า CSV เป็นเวอร์ชันเก่าหรือพังหรือไม่ ถ้าพังให้ลบทิ้ง """
     if os.path.exists(HISTORY_FILE):
         try:
             df = pd.read_csv(HISTORY_FILE)
             required_cols = ["invoice_no", "po_no", "invoice_qty", "ship_date"]
-            # ถ้าคอลัมน์เวอร์ชันใหม่มีไม่ครบ แสดงว่าเป็นไฟล์เก่า ให้ลบทิ้ง
             if not all(col in df.columns for col in required_cols):
                 os.remove(HISTORY_FILE)
         except Exception:
-            # ถ้าเกิด ParserError (พัง) ให้ลบทิ้งเลย
             os.remove(HISTORY_FILE)
 
 def generate_sample_data():
@@ -175,12 +176,11 @@ def update_human_decision_in_csv(running_no, decision, notes):
             df.loc[mask, "human_notes"] = notes
             df.to_csv(HISTORY_FILE, index=False)
 
-# เรียกใช้ระบบซ่อมแซมและสร้างข้อมูลจำลอง
 validate_and_repair_csv()
 generate_sample_data()
 
 # ==========================================
-# 3. PYDANTIC MODEL & 4. RULES ENGINE
+# 3. RULES ENGINE
 # ==========================================
 def calculate_readiness(data, strictness_label):
     score = 100
@@ -214,7 +214,7 @@ def calculate_readiness(data, strictness_label):
     return score, risk, int(delay), ai_rec, issues
 
 # ==========================================
-# 5. REVIEW MODAL (Human-in-the-Loop)
+# 4. REVIEW MODAL
 # ==========================================
 @st.dialog("🔍 Review & Verify Extracted Data", width="large")
 def review_modal():
@@ -273,7 +273,7 @@ def review_modal():
             st.rerun()
 
 # ==========================================
-# 6. SIDEBAR CONTROL PANEL
+# 5. SIDEBAR CONTROL PANEL
 # ==========================================
 with st.sidebar:
     st.header("⚙️ Control Panel")
@@ -313,7 +313,7 @@ if getattr(st.session_state, "show_modal", False):
     review_modal()
 
 # ==========================================
-# REUSABLE DASHBOARD COMPONENT (Solid Frame)
+# REUSABLE DASHBOARD COMPONENT (Solid White Frame)
 # ==========================================
 def render_dashboard(audit, key_prefix=""):
     issues = audit.get('issues', [])
@@ -350,9 +350,9 @@ def render_dashboard(audit, key_prefix=""):
     with st.container(border=True):
         # --- 1. HEADER ROW ---
         st.markdown(f"""
-        <div style="color: #cbd5e1; margin-bottom: 10px;">
+        <div style="color: #334155; margin-bottom: 10px;">
             <span style="background-color: #16a34a; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">🟢 3 DOCS MERGED & AUDITED</span> 
-            &nbsp;&nbsp;&nbsp; <b>Running No:</b> <span style="background-color: #334155; padding: 3px 8px; border-radius: 4px;">{audit.get('running_no', 'N/A')}</span> 
+            &nbsp;&nbsp;&nbsp; <b>Running No:</b> <span style="background-color: #e2e8f0; padding: 3px 8px; border-radius: 4px; color: #0f172a;">{audit.get('running_no', 'N/A')}</span> 
             &nbsp;&nbsp;&nbsp; <b>Time:</b> {audit.get('timestamp', 'N/A')} 
             &nbsp;&nbsp;&nbsp; <b>Mode:</b> {audit.get('shipment_mode', 'N/A')}
         </div>
@@ -401,7 +401,7 @@ def render_dashboard(audit, key_prefix=""):
 
         st.divider()
 
-        # --- 4. ACTION & DECISION ROW ---
+        # --- 4. ACTION & DECISION ROW (เปลี่ยนเป็น Radio แบบคลิกเลือกได้ทันทีโดยไม่ต้องกด Dropdown) ---
         col_ai, col_human = st.columns([1.5, 1])
         
         with col_ai:
@@ -411,7 +411,7 @@ def render_dashboard(audit, key_prefix=""):
             if issues:
                 st.markdown("**Reason & Notes:**")
                 for i in issues:
-                    st.markdown(f"<span style='color:#f87171;'>- 🔴 {i}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span style='color:#dc2626; font-weight: bold;'>- 🔴 {i}</span>", unsafe_allow_html=True)
                 st.markdown("- **Responsible Party:** Logistics / Compliance Officer")
             else:
                 st.markdown("**Reason & Notes:**")
@@ -421,9 +421,16 @@ def render_dashboard(audit, key_prefix=""):
                 
         with col_human:
             st.markdown("### 👤 Human Decision")
-            final_decision = st.selectbox("Final Status:", 
-                                          ["Ready to Export", "Requires Review & Correction", "Hold Shipment / High Risk"],
-                                          key=f"{key_prefix}dec")
+            
+            # ⭐️ ใช้ Radio button แทน Selectbox เพื่อให้เลือกได้ทันทีในหน้าจอเดียวโดยไม่ต้องกด Dropdown ⭐️
+            options_list = ["Ready to Export", "Requires Review & Correction", "Hold Shipment / High Risk"]
+            current_status = str(audit.get('human_notes', ''))
+            default_idx = 0
+            for idx, opt in enumerate(options_list):
+                if opt.lower() in audit.get('ai_recommendation', '').lower():
+                    default_idx = idx
+
+            final_decision = st.radio("Final Status:", options_list, index=default_idx, key=f"{key_prefix}radio_dec", horizontal=False)
             remarks = st.text_area("Remarks / Notes", value=str(audit.get('human_notes', '')), key=f"{key_prefix}rem")
             
             if st.button("💾 Save Transaction Log", type="primary", use_container_width=True, key=f"{key_prefix}save"):
@@ -432,24 +439,24 @@ def render_dashboard(audit, key_prefix=""):
                 st.session_state.active_audit['human_notes'] = remarks
                 st.success("บันทึกอัปเดตเรียบร้อยแล้ว!")
 
-        # --- 5. DOCUMENT CHECKLIST (BOTTOM) ---
+        # --- 5. DOCUMENT CHECKLIST (BOTTOM - ขยายขนาดให้เด่นชัดขึ้น) ---
         st.divider()
         coo_color = "#ca8a04" if not audit.get('has_coo', True) else "#166534"
-        coo_text = "? COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
+        coo_text = "❌ COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
         
         st.markdown("**DOCUMENT CHECKLIST (ATTACHED):**")
         st.markdown(f"""
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <span style="background-color: #166534; color: white; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold;">✓ Invoice</span>
-            <span style="background-color: #166534; color: white; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold;">✓ Packing List</span>
-            <span style="background-color: #166534; color: white; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold;">✓ PO</span>
-            <span style="background-color: #166534; color: white; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold;">✓ B/L / AWB</span>
-            <span style="background-color: {coo_color}; color: white; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold;">{coo_text}</span>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
+            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ Invoice</span>
+            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ Packing List</span>
+            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ PO</span>
+            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ B/L / AWB</span>
+            <span style="background-color: {coo_color}; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">{coo_text}</span>
         </div>
         """, unsafe_allow_html=True)
 
 # ==========================================
-# 7. MAIN APP ROUTING
+# 6. MAIN APP ROUTING
 # ==========================================
 st.markdown("## 🚢 TradeReady AI <span style='font-size: 14px; color: #cbd5e1;'>| Export Documentation & Customs Readiness Assistant</span>", unsafe_allow_html=True)
 
