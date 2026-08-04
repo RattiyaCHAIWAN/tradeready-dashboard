@@ -357,8 +357,15 @@ def render_dashboard(audit, key_prefix=""):
         </div>
         """, unsafe_allow_html=True)
         st.divider()
+        # --- 2. KPI ROW ---
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("READINESS SCORE", f"{audit.get('readiness_score', 0)}/100")
+        c2.metric("COMPLETION RATE", "83.3%" if audit.get('readiness_score', 0) < 85 else "100%")
+        c3.metric("RISK LEVEL", audit.get('risk_level', 'N/A'))
+        c4.metric("EST. BORDER DELAY", f"{audit.get('est_delay', 0)} Hours")
         
-        # --- 5. DOCUMENT CHECKLIST (BOTTOM) ---
+        st.divider()
+       # --- 5. DOCUMENT CHECKLIST (BOTTOM) ---
         st.divider()
         coo_color = "#ca8a04" if not audit.get('has_coo', True) else "#166534"
         coo_text = "❌ COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
@@ -373,16 +380,6 @@ def render_dashboard(audit, key_prefix=""):
             <span style="background-color: {coo_color}; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">{coo_text}</span>
         </div>
         """, unsafe_allow_html=True)
-        
-        # --- 2. KPI ROW ---
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("READINESS SCORE", f"{audit.get('readiness_score', 0)}/100")
-        c2.metric("COMPLETION RATE", "83.3%" if audit.get('readiness_score', 0) < 85 else "100%")
-        c3.metric("RISK LEVEL", audit.get('risk_level', 'N/A'))
-        c4.metric("EST. BORDER DELAY", f"{audit.get('est_delay', 0)} Hours")
-        
-        st.divider()
-
         # --- 3. DATA & AUDIT CHECK ROW ---
         col_data, col_audit = st.columns(2)
         
