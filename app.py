@@ -271,15 +271,14 @@ with st.sidebar:
       "Navigation", ["📄 Audit New Document", "📜 History Logs"]
   )
   st.divider()
-
-  st.session_state.strictness = st.selectbox(
-      "Customs Strictness Level", ["Lenient", "Standard", "Strict"], index=1
-  )
-
-  st.divider()
   st.markdown("**📂 Document Upload (Multi-File)**")
   uploaded_files = st.file_uploader(
       "Upload Invoice, PL, COO", type=["pdf"], accept_multiple_files=True
+  )
+  st.divider()
+
+  st.session_state.strictness = st.selectbox(
+      "Customs Strictness Level", ["Lenient", "Standard", "Strict"], index=1
   )
 
   if uploaded_files and st.button("🚀 Release to AI", use_container_width=True):
