@@ -42,7 +42,7 @@ st.markdown(
     
     /* 2. Dark Overlay for Main Area & Sidebar */
     [data-testid="stMain"], section.main {{
-        background-color: rgba(18, 58, 98, 0.85) !important;
+        background-color: rgba(18, 58, 98, 1) !important;
         backdrop-filter: blur(4px);
         -webkit-backdrop-filter: blur(4px);
     }}
