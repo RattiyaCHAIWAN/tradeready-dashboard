@@ -315,63 +315,110 @@ if getattr(st.session_state, "show_modal", False):
 # REUSABLE DASHBOARD COMPONENT (Solid White Frame)
 # ==========================================
 def render_dashboard(audit, key_prefix=""):
-    issues = audit.get('issues', [])
-    if isinstance(issues, str): 
-        issues = [] 
-    
-    try:
-        inv_qty_val = int(float(audit.get('invoice_qty', 0)))
-        inv_qty_str = f"{inv_qty_val:,}"
-    except (ValueError, TypeError):
-        inv_qty_str = str(audit.get('invoice_qty', 'N/A'))
+    # 🎨 CSS กำหนดให้กรอบ Container เป็นสีขาวแน่นๆ (Solid White) พร้อมปรับสีตัวอักษรให้อ่านง่าย
+    st.markdown(
+        """
+        <style>
+        /* กำหนดพื้นหลังกรอบ container (st.container(border=True)) ให้เป็นสีขาว */
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            background-color: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 12px !important;
+            padding: 12px !important;
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+        
+        /* ปรับสีฟอนต์ของ Metric และข้อความทั่วไปในกรอบให้เป็นสีเข้ม */
+        div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMetricValue"] {
+            color: #0F172A !important;
+        }
+        div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMetricLabel"] {
+            color: #475569 !important;
+            font-weight: bold !important;
+        }
+        div[data-testid="stVerticalBlockBorderWrapper"] h1, 
+        div[data-testid="stVerticalBlockBorderWrapper"] h2, 
+        div[data-testid="stVerticalBlockBorderWrapper"] h3, 
+        div[data-testid="stVerticalBlockBorderWrapper"] p,
+        div[data-testid="stVerticalBlockBorderWrapper"] label,
+        div[data-testid="stVerticalBlockBorderWrapper"] span {
+            color: #0F172A;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    issues = audit.get("issues", [])
+    if isinstance(issues, str):
+      issues = []
 
     try:
-        pl_qty_val = int(float(audit.get('packing_qty', 0)))
-        pl_qty_str = f"{pl_qty_val:,}"
+      inv_qty_val = int(float(audit.get("invoice_qty", 0)))
+      inv_qty_str = f"{inv_qty_val:,}"
     except (ValueError, TypeError):
-        pl_qty_str = str(audit.get('packing_qty', 'N/A'))
+      inv_qty_str = str(audit.get("invoice_qty", "N/A"))
 
     try:
-        amt_val = float(audit.get('total_amount', 0.0))
-        amt_str = f"{amt_val:,.2f}"
+      pl_qty_val = int(float(audit.get("packing_qty", 0)))
+      pl_qty_str = f"{pl_qty_val:,}"
     except (ValueError, TypeError):
-        amt_str = str(audit.get('total_amount', '0.00'))
+      pl_qty_str = str(audit.get("packing_qty", "N/A"))
 
-    inv_no = str(audit.get('invoice_no', 'N/A'))
-    pl_no_suffix = inv_no[-3:] if inv_no != 'N/A' and len(inv_no) >= 3 else 'N/A'
+    try:
+      amt_val = float(audit.get("total_amount", 0.0))
+      amt_str = f"{amt_val:,.2f}"
+    except (ValueError, TypeError):
+      amt_str = str(audit.get("total_amount", "0.00"))
 
-    if not issues and audit.get('readiness_score', 100) < 85:
-        if str(audit.get('invoice_qty')) != str(audit.get('packing_qty')):
-            issues.append("Quantity Mismatch (Invoice vs Packing List)")
-        if not audit.get('has_coo', True):
-            issues.append("Missing Certificate of Origin (COO)")
+    inv_no = str(audit.get("invoice_no", "N/A"))
+    pl_no_suffix = (
+        inv_no[-3:] if inv_no != "N/A" and len(inv_no) >= 3 else "N/A"
+    )
+
+    if not issues and audit.get("readiness_score", 100) < 85:
+      if str(audit.get("invoice_qty")) != str(audit.get("packing_qty")):
+        issues.append("Quantity Mismatch (Invoice vs Packing List)")
+      if not audit.get("has_coo", True):
+        issues.append("Missing Certificate of Origin (COO)")
 
     with st.container(border=True):
-        # --- 1. HEADER ROW ---
-        st.markdown(f"""
+      # --- 1. HEADER ROW ---
+      st.markdown(
+          f"""
         <div style="color: #334155; margin-bottom: 10px;">
             <span style="background-color: #16a34a; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">🟢 3 DOCS MERGED & AUDITED</span> 
             &nbsp;&nbsp;&nbsp; <b>Running No:</b> <span style="background-color: #e2e8f0; padding: 3px 8px; border-radius: 4px; color: #0f172a;">{audit.get('running_no', 'N/A')}</span> 
             &nbsp;&nbsp;&nbsp; <b>Time:</b> {audit.get('timestamp', 'N/A')} 
             &nbsp;&nbsp;&nbsp; <b>Mode:</b> {audit.get('shipment_mode', 'N/A')}
         </div>
-        """, unsafe_allow_html=True)
-        st.divider()
-        # --- 2. KPI ROW ---
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("READINESS SCORE", f"{audit.get('readiness_score', 0)}/100")
-        c2.metric("COMPLETION RATE", "83.3%" if audit.get('readiness_score', 0) < 85 else "100%")
-        c3.metric("RISK LEVEL", audit.get('risk_level', 'N/A'))
-        c4.metric("EST. BORDER DELAY", f"{audit.get('est_delay', 0)} Hours")
-        
-        st.divider()
-       # --- 5. DOCUMENT CHECKLIST (BOTTOM) ---
-        st.divider()
-        coo_color = "#ca8a04" if not audit.get('has_coo', True) else "#166534"
-        coo_text = "❌ COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
-        
-        st.markdown("**DOCUMENT CHECKLIST (ATTACHED):**")
-        st.markdown(f"""
+        """,
+          unsafe_allow_html=True,
+      )
+      st.divider()
+      # --- 2. KPI ROW ---
+      c1, c2, c3, c4 = st.columns(4)
+      c1.metric("READINESS SCORE", f"{audit.get('readiness_score', 0)}/100")
+      c2.metric(
+          "COMPLETION RATE",
+          "83.3%" if audit.get("readiness_score", 0) < 85 else "100%",
+      )
+      c3.metric("RISK LEVEL", audit.get("risk_level", "N/A"))
+      c4.metric("EST. BORDER DELAY", f"{audit.get('est_delay', 0)} Hours")
+
+      st.divider()
+      # --- 5. DOCUMENT CHECKLIST (BOTTOM) ---
+      st.divider()
+      coo_color = "#ca8a04" if not audit.get("has_coo", True) else "#166534"
+      coo_text = (
+          "❌ COO (Missing)"
+          if not audit.get("has_coo", True)
+          else "✓ COO (Verified)"
+      )
+
+      st.markdown("**DOCUMENT CHECKLIST (ATTACHED):**")
+      st.markdown(
+          f"""
         <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
             <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ Invoice</span>
             <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ Packing List</span>
@@ -379,13 +426,15 @@ def render_dashboard(audit, key_prefix=""):
             <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ B/L / AWB</span>
             <span style="background-color: {coo_color}; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">{coo_text}</span>
         </div>
-        """, unsafe_allow_html=True)
-        # --- 3. DATA & AUDIT CHECK ROW ---
-        col_data, col_audit = st.columns(2)
-        
-        with col_data:
-            st.markdown("### 📄 Extracted Data Across Files")
-            st.markdown(f"""
+        """,
+          unsafe_allow_html=True,
+      )
+      # --- 3. DATA & AUDIT CHECK ROW ---
+      col_data, col_audit = st.columns(2)
+
+      with col_data:
+        st.markdown("### 📄 Extracted Data Across Files")
+        st.markdown(f"""
             * **Invoice No:** `{inv_no}`
             * **Packing List No:** `PL-{pl_no_suffix}`
             * **Invoice Total Qty:** `{inv_qty_str} PCS`
@@ -395,59 +444,94 @@ def render_dashboard(audit, key_prefix=""):
             * **Destination Origin:** `{audit.get('destination', 'N/A')}`
             """)
 
-        with col_audit:
-            st.markdown("### 🔍 Cross-Document Multi-Audit")
-            if str(audit.get('invoice_qty')) != str(audit.get('packing_qty')):
-                st.error(f"🔴 Quantity Mismatch (Invoice vs PL): {audit.get('invoice_qty', 'N/A')} vs {audit.get('packing_qty', 'N/A')}")
-            else:
-                st.success(f"🟢 Quantity Match (Invoice vs PL): {inv_qty_str} PCS")
-                
-            st.success("🟢 Exporter & Consignee: Matches Across All Docs")
-            
-            if not audit.get('has_coo', True) or "COO" in str(issues):
-                st.warning("🟡 Certificate of Origin (COO): Missing or Invalid")
-            else:
-                st.success("🟢 Certificate of Origin (COO): Valid for FTA")
-                
-            st.success(f"🟢 HS Code {audit.get('hs_code', '8409.91')}: Matched Invoice vs COO")
+      with col_audit:
+        st.markdown("### 🔍 Cross-Document Multi-Audit")
+        if str(audit.get("invoice_qty")) != str(audit.get("packing_qty")):
+          st.error(
+              "🔴 Quantity Mismatch (Invoice vs PL):"
+              f" {audit.get('invoice_qty', 'N/A')} vs"
+              f" {audit.get('packing_qty', 'N/A')}"
+          )
+        else:
+          st.success(
+              f"🟢 Quantity Match (Invoice vs PL): {inv_qty_str} PCS"
+          )
 
-        st.divider()
+        st.success("🟢 Exporter & Consignee: Matches Across All Docs")
 
-        # --- 4. ACTION & DECISION ROW ---
-        col_ai, col_human = st.columns([1.5, 1])
-        
-        with col_ai:
-            st.markdown("### 🤖 AI Recommendation (Alternative 1 of 3)")
-            st.info(f"👉 **{audit.get('ai_recommendation', 'N/A').upper()}**")
-            
-            if issues:
-                st.markdown("**Reason & Notes:**")
-                for i in issues:
-                    st.markdown(f"<span style='color:#dc2626; font-weight: bold;'>- 🔴 {i}</span>", unsafe_allow_html=True)
-                st.markdown("- **Responsible Party:** Logistics / Compliance Officer")
-            else:
-                st.markdown("**Reason & Notes:**")
-                st.markdown("- Documents are complete with COO attached.")
-                st.markdown("- Minor Note: Declared weight is within tolerance.")
-                st.markdown("- **Responsible Party:** Shipping Officer (Clearance)")
-                
-        with col_human:
-            st.markdown("### 👤 Human Decision")
-            options_list = ["Ready to Export", "Requires Review & Correction", "Hold Shipment / High Risk"]
-            default_idx = 0
-            for idx, opt in enumerate(options_list):
-                if opt.lower() in audit.get('ai_recommendation', '').lower():
-                    default_idx = idx
+        if not audit.get("has_coo", True) or "COO" in str(issues):
+          st.warning("🟡 Certificate of Origin (COO): Missing or Invalid")
+        else:
+          st.success("🟢 Certificate of Origin (COO): Valid for FTA")
 
-            final_decision = st.radio("Final Status:", options_list, index=default_idx, key=f"{key_prefix}radio_dec", horizontal=False)
-            remarks = st.text_area("Remarks / Notes", value=str(audit.get('human_notes', '')), key=f"{key_prefix}rem")
-            
-            if st.button("💾 Save Transaction Log", type="primary", use_container_width=True, key=f"{key_prefix}save"):
-                update_human_decision_in_csv(audit['running_no'], final_decision, remarks)
-                st.session_state.active_audit['human_status'] = f"Updated ({final_decision})"
-                st.session_state.active_audit['human_notes'] = remarks
-                st.success("บันทึกอัปเดตเรียบร้อยแล้ว!")
+        st.success(
+            f"🟢 HS Code {audit.get('hs_code', '8409.91')}: Matched Invoice vs"
+            " COO"
+        )
 
+      st.divider()
+
+      # --- 4. ACTION & DECISION ROW ---
+      col_ai, col_human = st.columns([1.5, 1])
+
+      with col_ai:
+        st.markdown("### 🤖 AI Recommendation (Alternative 1 of 3)")
+        st.info(f"👉 **{audit.get('ai_recommendation', 'N/A').upper()}**")
+
+        if issues:
+          st.markdown("**Reason & Notes:**")
+          for i in issues:
+            st.markdown(
+                f"<span style='color:#dc2626; font-weight: bold;'>- 🔴"
+                f" {i}</span>",
+                unsafe_allow_html=True,
+            )
+          st.markdown("- **Responsible Party:** Logistics / Compliance Officer")
+        else:
+          st.markdown("**Reason & Notes:**")
+          st.markdown("- Documents are complete with COO attached.")
+          st.markdown("- Minor Note: Declared weight is within tolerance.")
+          st.markdown("- **Responsible Party:** Shipping Officer (Clearance)")
+
+      with col_human:
+        st.markdown("### 👤 Human Decision")
+        options_list = [
+            "Ready to Export",
+            "Requires Review & Correction",
+            "Hold Shipment / High Risk",
+        ]
+        default_idx = 0
+        for idx, opt in enumerate(options_list):
+          if opt.lower() in audit.get("ai_recommendation", "").lower():
+            default_idx = idx
+
+        final_decision = st.radio(
+            "Final Status:",
+            options_list,
+            index=default_idx,
+            key=f"{key_prefix}radio_dec",
+            horizontal=False,
+        )
+        remarks = st.text_area(
+            "Remarks / Notes",
+            value=str(audit.get("human_notes", "")),
+            key=f"{key_prefix}rem",
+        )
+
+        if st.button(
+            "💾 Save Transaction Log",
+            type="primary",
+            use_container_width=True,
+            key=f"{key_prefix}save",
+        ):
+          update_human_decision_in_csv(
+              audit["running_no"], final_decision, remarks
+          )
+          st.session_state.active_audit["human_status"] = (
+              f"Updated ({final_decision})"
+          )
+          st.session_state.active_audit["human_notes"] = remarks
+          st.success("บันทึกอัปเดตเรียบร้อยแล้ว!")
 
 
 # ==========================================
