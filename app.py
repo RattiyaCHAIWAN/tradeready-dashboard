@@ -17,7 +17,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 0.1 CUSTOM BACKGROUND IMAGE (ส่วนที่เพิ่มใหม่)
+# 0.1 CUSTOM BACKGROUND IMAGE & OVERLAY
 # ==========================================
 # 🔗 เปลี่ยน URL ตรงนี้เป็นลิงก์รูปภาพที่คุณต้องการ
 background_image_url = "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=2070&auto=format&fit=crop"
@@ -25,7 +25,7 @@ background_image_url = "https://images.unsplash.com/photo-1578575437130-527eed3a
 st.markdown(
     f"""
     <style>
-    /* ตั้งค่ารูปพื้นหลังให้เต็มจอ .stApp */
+    /* 1. ตั้งค่ารูปพื้นหลังให้เต็มจอหลัก (.stApp) */
     .stApp {{
         background-image: url("{background_image_url}");
         background-size: cover;
@@ -34,18 +34,23 @@ st.markdown(
         background-attachment: fixed;
     }}
     
-    /* เพิ่มพื้นหลังสีกรมท่าโปร่งใสทับส่วนเนื้อหา เพื่อให้ตัวอักษรยังคงอ่านง่าย */
-    .block-container {{
-        background-color: rgba(18, 58, 98, 0.65); /* #123A62 ที่มีความโปร่งใส 85% */
-        padding-top: 3rem;
-        padding-bottom: 3rem;
-        padding-left: 3rem;
-        padding-right: 3rem;
-        border-radius: 15px;
-        margin-top: 2rem;
+    /* 2. สีกรมท่าโปร่งใสคลุมเต็มพื้นที่หน้าจอหลัก (Main Area) ทั้งหมด */
+    [data-testid="stMain"], section.main {{
+        background-color: rgba(18, 58, 98, 0.70) !important; /* สีกรมท่า #123A62 ที่โปร่งแสง 70% */
+        backdrop-filter: blur(4px);                         /* เพิ่มเอฟเฟกต์เบลอภาพฉากหลังเบาๆ */
+        -webkit-backdrop-filter: blur(4px);
     }}
     
-    /* ปรับขนาดฟอนต์ในตาราง (ตามที่คุยกันก่อนหน้า) */
+    /* 3. ยกเลิกสีพื้นหลังและขอบกล่องใน .block-container เพื่อให้กลมกลืนเต็มจอ */
+    .block-container {{
+        background-color: transparent !important;
+        padding-top: 2.5rem;
+        padding-bottom: 2.5rem;
+        padding-left: 3rem;
+        padding-right: 3rem;
+    }}
+    
+    /* 4. ปรับขนาดฟอนต์ในตารางให้อ่านง่ายขึ้น */
     .stDataFrame {{
         font-size: 16px;
     }}
