@@ -224,7 +224,7 @@ st.markdown(
     <style>
     /* 1. 🧊 ปรับ Sidebar ให้โปร่งแสง และทำเอฟเฟกต์กระจกฝ้า (Frosted Glass) */
     [data-testid="stSidebar"] {
-        background-color: rgba(15, 23, 42, 0.65) !important; /* ปรับความโปร่งแสงที่เลข 0.65 (65%) */
+        background-color: rgba(18, 58, 98, 0.65) !important; /* ปรับความโปร่งแสงที่เลข 0.65 (65%) */
         backdrop-filter: blur(8px) !important;              /* เพิ่มความเบลอฉากหลังให้ดูพรีเมียม */
         -webkit-backdrop-filter: blur(8px);
     }
@@ -235,22 +235,22 @@ st.markdown(
 
     /* 2. ขยายฟอนต์ข้อความทั่วไป */
     html, body, [class*="st-"], .stMarkdown p {
-        font-size: 18px !important;
+        font-size: 16px !important;
     }
     
     /* ขยายฟอนต์ใน Sidebar */
     [data-testid="stSidebar"] * {
-        font-size: 17px !important;
+        font-size: 15px !important;
     }
     
     /* ขยายหัวข้อใน Sidebar */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        font-size: 22px !important;
+        font-size: 20px !important;
     }
     
     /* ขยาย Label */
     .stRadio label, .stSelectbox label, .stTextInput label, .stFileUploader label {
-        font-size: 18px !important;
+        font-size: 16px !important;
         font-weight: bold;
     }
     </style>
@@ -280,17 +280,15 @@ with st.sidebar:
       "Navigation", ["📄 Audit New Document", "📜 History Logs"]
   )
   st.divider()
-
-  st.session_state.strictness = st.selectbox(
-      "Customs Strictness Level", ["Lenient", "Standard", "Strict"], index=1
-  )
-
-  st.divider()
   st.markdown("**📂 Document Upload (Multi-File)**")
   uploaded_files = st.file_uploader(
       "Upload Invoice, PL, COO", type=["pdf"], accept_multiple_files=True
   )
+  st.divider()
 
+  st.session_state.strictness = st.selectbox(
+      "Customs Strictness Level", ["Lenient", "Standard", "Strict"], index=1
+  )
   if uploaded_files and st.button("🚀 Release to AI", use_container_width=True):
     # เช็คว่าผู้ใช้กรอก API Key หรือยัง
     if not st.session_state.get("api_key"):
