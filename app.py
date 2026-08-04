@@ -1,6 +1,6 @@
+from datetime import date, datetime
 import json
 import os
-from datetime import date, datetime
 from google import genai
 from google.genai import types
 import pandas as pd
@@ -24,14 +24,14 @@ if "nav_choice" not in st.session_state:
   st.session_state.nav_choice = "📄 Audit New Document"
 
 # ==========================================
-# 0.1 CUSTOM BACKGROUND & COMPLETE WHITE CARDS CSS
+# 0.1 ULTIMATE WHITE ENTERPRISE DASHBOARD CSS
 # ==========================================
 background_image_url = "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=2070&auto=format&fit=crop"
 
 st.markdown(
     f"""
     <style>
-    /* 1. Background Image */
+    /* 1. Background Image Full Screen */
     .stApp {{
         background-image: url("{background_image_url}");
         background-size: cover;
@@ -40,15 +40,15 @@ st.markdown(
         background-attachment: fixed;
     }}
     
-    /* 2. Dark Overlay for Main Area & Sidebar */
+    /* 2. Main Layout Dark Overlay */
     [data-testid="stMain"], section.main {{
-        background-color: rgba(18, 58, 98, 0.85) !important;
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
+        background-color: rgba(10, 25, 47, 0.85) !important;
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
     }}
     
     [data-testid="stSidebar"] {{
-        background-color: rgba(18, 58, 98, 0.85) !important;
+        background-color: rgba(15, 23, 42, 0.88) !important;
         backdrop-filter: blur(8px) !important;
         -webkit-backdrop-filter: blur(8px);
     }}
@@ -60,72 +60,103 @@ st.markdown(
     .block-container {{
         background-color: transparent !important;
         padding-top: 1.5rem !important; 
-        padding-bottom: 1.5rem !important;
+        padding-bottom: 2rem !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
     }}
     
-    /* 3. Force Solid White Background for st.container(border=True) */
-    [data-testid="stVerticalBlockBorderWrapper"],
-    [data-testid="stBorderWrapper"],
-    div[data-testid="stVerticalBlockBorderWrapper"] > div {{
+    /* 3. FORCE SOLID WHITE CONTAINER FOR DASHBOARD CARD */
+    div[data-testid="stVerticalBlockBorderWrapper"],
+    div[data-testid="stBorderWrapper"] {{
         background-color: #FFFFFF !important; 
-        border: 2px solid #CBD5E1 !important; 
-        border-radius: 12px !important;
-        padding: 1rem !important;
-        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.9) !important; 
+        border: 1px solid #E2E8F0 !important; 
+        border-radius: 16px !important;
+        padding: 1.5rem !important;
+        box-shadow: 0px 20px 40px rgba(0, 0, 0, 0.4) !important; 
     }}
 
-    /* 4. Text & Typography Inside White Card */
-    [data-testid="stVerticalBlockBorderWrapper"] h1,
-    [data-testid="stVerticalBlockBorderWrapper"] h2,
-    [data-testid="stVerticalBlockBorderWrapper"] h3,
-    [data-testid="stVerticalBlockBorderWrapper"] h4,
-    [data-testid="stVerticalBlockBorderWrapper"] p,
-    [data-testid="stVerticalBlockBorderWrapper"] li,
-    [data-testid="stVerticalBlockBorderWrapper"] span,
-    [data-testid="stVerticalBlockBorderWrapper"] label,
-    [data-testid="stBorderWrapper"] p,
-    [data-testid="stBorderWrapper"] label {{
+    /* Reset inner column backgrounds inside the white container */
+    div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"],
+    div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlock"] {{
+        background-color: transparent !important;
+    }}
+
+    /* 4. TYPOGRAPHY OVERRIDES INSIDE WHITE CARD */
+    div[data-testid="stVerticalBlockBorderWrapper"] h1,
+    div[data-testid="stVerticalBlockBorderWrapper"] h2,
+    div[data-testid="stVerticalBlockBorderWrapper"] h3,
+    div[data-testid="stVerticalBlockBorderWrapper"] h4,
+    div[data-testid="stVerticalBlockBorderWrapper"] p,
+    div[data-testid="stVerticalBlockBorderWrapper"] li,
+    div[data-testid="stVerticalBlockBorderWrapper"] span,
+    div[data-testid="stVerticalBlockBorderWrapper"] label,
+    div[data-testid="stVerticalBlockBorderWrapper"] div {{
         color: #0F172A !important;
     }}
 
-    /* 5. Metrics Styling Inside White Card */
-    [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMetricValue"] {{
-        color: #0F172A !important;
-        font-weight: bold !important;
-    }}
-    [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMetricLabel"] {{
-        color: #475569 !important;
-        font-weight: 600 !important;
+    div[data-testid="stVerticalBlockBorderWrapper"] h3 {{
+        color: #1E3A8A !important;
+        font-weight: 700 !important;
+        margin-bottom: 0.8rem !important;
     }}
 
-    /* 6. Form Controls & Inputs Inside White Card */
-    [data-testid="stVerticalBlockBorderWrapper"] textarea,
-    [data-testid="stVerticalBlockBorderWrapper"] input[type="text"] {{
+    /* 5. KPI METRICS STYLING (MINI-CARDS INSIDE DASHBOARD) */
+    div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMetric"] {{
         background-color: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        border-left: 5px solid #2563EB !important;
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.05) !important;
+    }}
+
+    div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMetricValue"] div {{
         color: #0F172A !important;
-        border: 1px solid #CBD5E1 !important;
+        font-size: 26px !important;
+        font-weight: 800 !important;
+    }}
+
+    div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMetricLabel"] p {{
+        color: #475569 !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }}
+
+    /* 6. CODE BADGES IN EXTRACTED DATA */
+    div[data-testid="stVerticalBlockBorderWrapper"] code {{
+        background-color: #EFF6FF !important;
+        color: #1E40AF !important;
+        border: 1px solid #BFDBFE !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        padding: 3px 8px !important;
         border-radius: 6px !important;
     }}
 
-    /* 7. Divider inside White Card */
-    [data-testid="stVerticalBlockBorderWrapper"] hr {{
+    /* 7. INPUTS & TEXTAREA INSIDE WHITE CARD */
+    div[data-testid="stVerticalBlockBorderWrapper"] textarea,
+    div[data-testid="stVerticalBlockBorderWrapper"] input {{
+        background-color: #F8FAFC !important;
+        color: #0F172A !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+    }}
+
+    /* 8. ALERT BOXES INSIDE WHITE CARD */
+    div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stNotification"] {{
+        border-radius: 10px !important;
+    }}
+
+    /* 9. DIVIDER STYLING */
+    div[data-testid="stVerticalBlockBorderWrapper"] hr {{
         border-color: #E2E8F0 !important;
-        margin: 0.8rem 0 !important;
+        margin: 1rem 0 !important;
     }}
 
-    /* 8. General Typography */
-    h1, h2, h3, h4 {{
-        margin-top: 0.2rem !important;
-        margin-bottom: 0.5rem !important;
-    }}
-    
+    /* Global Typography */
     html, body, [class*="st-"], .stMarkdown p {{
-        font-size: 15px !important;
-    }}
-
-    .stDataFrame {{
         font-size: 15px !important;
     }}
     </style>
@@ -433,7 +464,7 @@ if getattr(st.session_state, "show_modal", False):
 
 
 # ==========================================
-# REUSABLE DASHBOARD COMPONENT (Solid White Frame)
+# REUSABLE DASHBOARD COMPONENT (Solid White Enterprise Card)
 # ==========================================
 def render_dashboard(audit, key_prefix=""):
   issues = audit.get("issues", [])
@@ -470,21 +501,23 @@ def render_dashboard(audit, key_prefix=""):
       issues.append("Missing Certificate of Origin (COO)")
 
   with st.container(border=True):
-    # --- 1. HEADER ROW ---
+    # --- 1. HEADER BADGE BAR ---
     st.markdown(
         f"""
-        <div style="color: #334155; margin-bottom: 10px;">
-            <span style="background-color: #16a34a; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">🟢 3 DOCS MERGED & AUDITED</span> 
-            &nbsp;&nbsp;&nbsp; <b>Running No:</b> <span style="background-color: #e2e8f0; padding: 3px 8px; border-radius: 4px; color: #0f172a;">{audit.get('running_no', 'N/A')}</span> 
-            &nbsp;&nbsp;&nbsp; <b>Time:</b> {audit.get('timestamp', 'N/A')} 
-            &nbsp;&nbsp;&nbsp; <b>Mode:</b> {audit.get('shipment_mode', 'N/A')}
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; background-color: #F8FAFC; padding: 10px 16px; border-radius: 10px; border: 1px solid #E2E8F0; margin-bottom: 15px;">
+            <div>
+                <span style="background-color: #16A34A; color: white; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 13px;">🟢 3 DOCS MERGED & AUDITED</span> 
+                &nbsp;&nbsp;<b style="color: #475569;">Running No:</b> <span style="background-color: #E2E8F0; padding: 3px 10px; border-radius: 6px; color: #0F172A; font-weight: bold;">{audit.get('running_no', 'N/A')}</span> 
+            </div>
+            <div style="font-size: 14px; color: #475569;">
+                <b>Time:</b> {audit.get('timestamp', 'N/A')} &nbsp;|&nbsp; <b>Mode:</b> <span style="font-weight: bold; color: #1E3A8A;">{audit.get('shipment_mode', 'N/A')}</span>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    st.divider()
 
-    # --- 2. KPI ROW ---
+    # --- 2. KPI METRICS ROW ---
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("READINESS SCORE", f"{audit.get('readiness_score', 0)}/100")
     c2.metric(
@@ -497,22 +530,22 @@ def render_dashboard(audit, key_prefix=""):
     st.divider()
 
     # --- 3. DOCUMENT CHECKLIST ---
-    coo_color = "#ca8a04" if not audit.get("has_coo", True) else "#166534"
+    coo_color = "#D97706" if not audit.get("has_coo", True) else "#16A34A"
     coo_text = (
         "❌ COO (Missing)"
         if not audit.get("has_coo", True)
         else "✓ COO (Verified)"
     )
 
-    st.markdown("**DOCUMENT CHECKLIST (ATTACHED):**")
+    st.markdown("<p style='font-weight: 800; color: #334155; margin-bottom: 8px;'>DOCUMENT CHECKLIST (ATTACHED):</p>", unsafe_allow_html=True)
     st.markdown(
         f"""
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
-            <span style="background-color: #166534; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ Invoice</span>
-            <span style="background-color: #166534; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ Packing List</span>
-            <span style="background-color: #166534; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ PO</span>
-            <span style="background-color: #166534; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">✓ B/L / AWB</span>
-            <span style="background-color: {coo_color}; color: white; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: bold;">{coo_text}</span>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <span style="background-color: #16A34A; color: white; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: bold;">✓ Invoice</span>
+            <span style="background-color: #16A34A; color: white; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: bold;">✓ Packing List</span>
+            <span style="background-color: #16A34A; color: white; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: bold;">✓ PO</span>
+            <span style="background-color: #16A34A; color: white; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: bold;">✓ B/L / AWB</span>
+            <span style="background-color: {coo_color}; color: white; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: bold;">{coo_text}</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -573,7 +606,7 @@ def render_dashboard(audit, key_prefix=""):
         st.markdown("**Reason & Notes:**")
         for i in issues:
           st.markdown(
-              f"<span style='color:#dc2626; font-weight: bold;'>- 🔴"
+              f"<span style='color:#DC2626; font-weight: bold;'>- 🔴"
               f" {i}</span>",
               unsafe_allow_html=True,
           )
@@ -629,7 +662,7 @@ def render_dashboard(audit, key_prefix=""):
 # 6. MAIN APP ROUTING
 # ==========================================
 st.markdown(
-    "## 🚢 TradeReady AI <span style='font-size: 14px; color: #cbd5e1;'>|"
+    "## 🚢 TradeReady AI <span style='font-size: 14px; color: #CBD5E1;'>|"
     " Export Documentation & Customs Readiness Assistant</span>",
     unsafe_allow_html=True,
 )
