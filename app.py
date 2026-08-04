@@ -46,7 +46,7 @@ st.markdown(
     }}
     
     [data-testid="stSidebar"] {{
-        background-color: rgba(18, 58, 98, 0.65) !important;
+        background-color: rgba(18, 58, 98, 1) !important;
         backdrop-filter: blur(8px) !important;
         -webkit-backdrop-filter: blur(8px);
     }}
@@ -69,7 +69,7 @@ st.markdown(
         border: 2px solid #cbd5e1 !important; 
         border-radius: 12px !important;
         padding: 1.5rem !important;
-        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.8) !important; 
+        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3) !important; 
     }}
 
     [data-testid="stVerticalBlockBorderWrapper"] h3, 
