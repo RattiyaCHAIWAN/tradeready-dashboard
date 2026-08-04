@@ -20,7 +20,7 @@ st.set_page_config(
 # 0.1 CUSTOM BACKGROUND IMAGE (ส่วนที่เพิ่มใหม่)
 # ==========================================
 # 🔗 เปลี่ยน URL ตรงนี้เป็นลิงก์รูปภาพที่คุณต้องการ
-background_image_url = "https://images.unsplash.com/photo-1494412519320-aa613dfb7738?q=80&w=2070&auto=format&fit=crop"
+background_image_url = "https://images.unsplash.com/photo-1578575437130-527eed3abbec?q=80&w=2070&auto=format&fit=crop"
 
 st.markdown(
     f"""
