@@ -16,7 +16,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# จัดจัดการ Navigation State สำหรับปุ่มวาร์ป
+# 🛠️ FIX: ตรวจสอบ pending_page ก่อนที่ st.radio ใน Sidebar จะถูกวาดขึ้นมา
+if "pending_page" in st.session_state:
+    st.session_state.nav_choice = st.session_state.pending_page
+    del st.session_state["pending_page"]
+
 if "nav_choice" not in st.session_state:
     st.session_state.nav_choice = "📄 Audit New Document"
 
@@ -119,14 +123,13 @@ def generate_sample_data():
         delay = 0 if risk == "LOW 🟢" else (12 if risk == "MED 🟡" else 36)
         ai_rec = "Ready to Export" if risk == "LOW 🟢" else ("Requires Review" if risk == "MED 🟡" else "Hold Shipment")
         
-        # กระจายวัน Ship Date ออกไปในช่วงวันที่ 2026-08-01 ถึง 2026-08-10
         ship_day = (i % 5) + 1
         ship_date_str = f"2026-08-{ship_day:02d}"
         
         samples.append({
             "running_no": f"TR-202608{i:02d}-0001",
             "timestamp": f"2026-08-01 10:30:00",
-            "ship_date": ship_date_str,  # 👈 เพิ่มฟิลด์ Ship Date
+            "ship_date": ship_date_str,
             "exporter": "Chiang Mai OEM Electronics" if i % 2 == 0 else "Northern Agri Export",
             "destination": "Japan" if i % 2 == 0 else "China",
             "shipment_mode": "AIR ✈️" if i % 3 == 0 else ("SEA 🚢" if i % 3 == 1 else "TRUCK 🚛"),
@@ -183,13 +186,11 @@ def calculate_readiness(data, strictness_label):
     m_mode = MODE_MULTIPLIER.get(data['shipment_mode'], 1.0)
     
     issues = []
-    # 1. Quantity Mismatch
     if data['invoice_qty'] != data['packing_qty']:
         score -= (25 * m_strict)
         delay += (24 * m_mode)
         issues.append("Quantity Mismatch (Invoice vs Packing List)")
         
-    # 2. Missing COO
     if not data['has_coo']:
         score -= (20 * m_strict)
         delay += (12 * m_mode)
@@ -224,7 +225,6 @@ def review_modal():
             mode = st.selectbox("Shipment Mode", ["AIR ✈️", "SEA 🚢", "TRUCK 🚛"], 
                                 index=["AIR ✈️", "SEA 🚢", "TRUCK 🚛"].index(data.get('shipment_mode', 'AIR ✈️')))
             
-            # 📅 เพิ่มระบุวัน Shipment Date (ETD)
             ship_date_input = st.date_input("Shipment Date (ETD)", value=date.today())
             
             inv = st.text_input("Invoice No.", data['invoice_no'])
@@ -259,7 +259,7 @@ def review_modal():
             new_record = pd.DataFrame([{
                 "running_no": run_no, 
                 "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                "ship_date": str(ship_date_input), # 👈 บันทึก Ship Date
+                "ship_date": str(ship_date_input),
                 "exporter": exporter, 
                 "destination": dest, 
                 "shipment_mode": mode,
@@ -276,7 +276,8 @@ def review_modal():
             st.session_state.active_audit = new_record.iloc[0].to_dict()
             st.session_state.active_audit['issues'] = issues
             st.session_state.show_modal = False
-            st.session_state.nav_choice = "📄 Audit New Document"
+            # 🛠️ FIX: ใช้ pending_page แทนการแก้ nav_choice โดยตรง
+            st.session_state.pending_page = "📄 Audit New Document"
             st.rerun()
 
 # ==========================================
@@ -397,12 +398,10 @@ elif app_mode == "📜 History Logs":
         if "ship_date" not in df.columns:
             df["ship_date"] = "2026-08-01"
             
-        # --- FILTERS ROW (3 Columns) ---
         col1, col2, col3 = st.columns([1.5, 1, 1])
         search_q = col1.text_input("🔍 Search Exporter or Running No.")
         risk_filter = col2.selectbox("Filter Risk Level", ["All", "LOW 🟢", "MED 🟡", "HIGH 🔴"])
         
-        # 📅 Filter By Ship Date
         enable_date_filter = col3.checkbox("📅 Filter by Ship Date", value=False)
         selected_ship_date = date.today()
         if enable_date_filter:
@@ -421,7 +420,6 @@ elif app_mode == "📜 History Logs":
         if enable_date_filter:
             filtered_df = filtered_df[filtered_df['ship_date'] == str(selected_ship_date)]
 
-        # --- 📊 DAILY RELEASE READINESS SUMMARY (จะโชว์เมื่อมีการกรองวัน) ---
         if enable_date_filter:
             total_shipments = len(filtered_df)
             approved_shipments = len(filtered_df[filtered_df['human_status'].str.contains("Accepted|Ready", case=False, na=False)])
@@ -442,7 +440,6 @@ elif app_mode == "📜 History Logs":
 
         st.caption("💡 *คำแนะนำ: คลิกเลือกแถวในตารางด้านล่าง เพื่อกดเปิดดูหน้า Dashboard รายละเอียดของชิปเมนต์นั้นได้*")
 
-        # ตารางโต้ตอบ (Interactive DataFrame)
         event = st.dataframe(
             filtered_df[["running_no", "ship_date", "shipment_mode", "exporter", "destination", "readiness_score", "risk_level", "human_status"]],
             use_container_width=True,
@@ -451,7 +448,6 @@ elif app_mode == "📜 History Logs":
             selection_mode="single-row"
         )
         
-        # เมื่อคลิกเลือกแถวในตาราง
         selected_rows = event.selection.rows
         if selected_rows:
             selected_index = selected_rows[0]
@@ -474,7 +470,8 @@ elif app_mode == "📜 History Logs":
                     else:
                         st.session_state.active_audit['issues'] = []
 
-                    st.session_state.nav_choice = "📄 Audit New Document"
+                    # 🛠️ FIX: ใช้ pending_page แทนการแก้ nav_choice โดยตรง
+                    st.session_state.pending_page = "📄 Audit New Document"
                     st.rerun()
     else:
         st.warning("ยังไม่พบข้อมูลประวัติในระบบ")
