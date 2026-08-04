@@ -25,31 +25,31 @@ background_image_url = "https://images.unsplash.com/photo-1578575437130-527eed3a
 st.markdown(
     f"""
     <style>
-    /* ตั้งค่ารูปพื้นหลังให้เต็มจอ .stApp */
-    .stApp {{
-        background-image: url("{background_image_url}");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-    }}
-    
-    /* เพิ่มพื้นหลังสีกรมท่าโปร่งใสทับส่วนเนื้อหา เพื่อให้ตัวอักษรยังคงอ่านง่าย */
-    .block-container {{
-        background-color: rgba(18, 58, 98, 0.65); /* #123A62 ที่มีความโปร่งใส 85% */
-        padding-top: 3rem;
-        padding-bottom: 3rem;
-        padding-left: 3rem;
-        padding-right: 3rem;
-        border-radius: 15px;
-        margin-top: 2rem;
-    }}
-    
-    /* ปรับขนาดฟอนต์ในตาราง (ตามที่คุยกันก่อนหน้า) */
-    .stDataFrame {{
-        font-size: 16px;
-    }}
-    </style>
+/* 1. ภาพพื้นหลังอยู่ที่ .stApp เต็มจอหลัก */
+.stApp {
+    background-image: url("{background_image_url}");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+/* 2. สีกรมท่าโปร่งใสคลุมเต็มพื้นที่ฝั่งขวา (Main Area) ทั้งหมดแบบไม่มีขอบกล่อง */
+[data-testid="stMain"], section.main {
+    background-color: rgba(18, 58, 98, 0.70) !important; /* ปรับความโปร่งแสงตรงนี้ได้ (เช่น 0.65, 0.70, 0.85) */
+    backdrop-filter: blur(4px) !important;               /* เอฟเฟกต์เบลอภาพฉากหลังเบาๆ */
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* 3. ยกเลิกสีพื้นหลังใน .block-container เพื่อไม่ให้เกิดกล่องซ้อนกล่อง */
+.block-container {
+    background-color: transparent !important;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    padding-left: 3rem;
+    padding-right: 3rem;
+}
+</style>
     """,
     unsafe_allow_html=True
 )
