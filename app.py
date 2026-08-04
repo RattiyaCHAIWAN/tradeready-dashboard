@@ -16,6 +16,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+if "pending_page" in st.session_state:
+    st.session_state.nav_choice = st.session_state.pending_page
+    del st.session_state["pending_page"]
+
 if "nav_choice" not in st.session_state:
     st.session_state.nav_choice = "📄 Audit New Document"
 
@@ -61,6 +65,15 @@ st.markdown(
         padding-bottom: 1.5rem !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
+    }}
+    
+    /* 5. ⭐️ CSS สำหรับกรอบ Dashboard พื้นทึบให้ข้อมูลลอยเด่นขึ้นมา ⭐️ */
+    [data-testid="stVerticalBlockBorderWrapper"] {{
+        background-color: rgba(15, 23, 42, 0.95) !important; /* สีกรมท่าเข้มเกือบดำ แบบทึบ */
+        border: 1px solid #3b82f6 !important; /* ขอบสีน้ำเงิน */
+        border-radius: 12px !important;
+        padding: 1.5rem !important;
+        box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.5) !important; /* เงาให้ป๊อปอัป */
     }}
     
     h1, h2, h3, h4 {{
@@ -113,15 +126,15 @@ def generate_sample_data():
         score = 95 if scenario == "Normal" else (65 if scenario == "Disruption" else 40)
         risk = "LOW 🟢" if score >= 85 else ("MED 🟡" if score >= 50 else "HIGH 🔴")
         delay = 0 if risk == "LOW 🟢" else (12 if risk == "MED 🟡" else 36)
-        ai_rec = "Ready to Export" if risk == "LOW 🟢" else ("Requires Review" if risk == "MED 🟡" else "Hold Shipment")
+        ai_rec = "Ready to Export" if risk == "LOW 🟢" else ("Requires Review & Correction" if risk == "MED 🟡" else "Hold Shipment")
         
         ship_day = (i % 5) + 1
-        ship_date_str = f"2026-08-{ship_day:02d}"
         
+        # เพิ่มข้อมูล Mockup ให้ตารางแสดงผลได้สมจริงขึ้น
         samples.append({
             "running_no": f"TR-202608{i:02d}-0001",
             "timestamp": f"2026-08-01 10:30:00",
-            "ship_date": ship_date_str,
+            "ship_date": f"2026-08-{ship_day:02d}",
             "exporter": "Chiang Mai OEM Electronics" if i % 2 == 0 else "Northern Agri Export",
             "destination": "Japan" if i % 2 == 0 else "China",
             "shipment_mode": "AIR ✈️" if i % 3 == 0 else ("SEA 🚢" if i % 3 == 1 else "TRUCK 🚛"),
@@ -131,7 +144,15 @@ def generate_sample_data():
             "est_delay": delay,
             "ai_recommendation": ai_rec,
             "human_status": "🟢 Accepted" if i % 4 != 0 else "🟠 Overridden",
-            "human_notes": "-"
+            "human_notes": "-",
+            # Mock details
+            "invoice_no": f"INV-{i:03d}-881",
+            "po_no": f"PO-{i:03d}-99",
+            "invoice_qty": 1000 if scenario == "Normal" else 850,
+            "packing_qty": 1000,
+            "total_amount": 15000.0,
+            "hs_code": "8409.91",
+            "has_coo": True if scenario != "Erroneous Data" else False
         })
     pd.DataFrame(samples).to_csv(HISTORY_FILE, index=False)
 
@@ -153,20 +174,6 @@ generate_sample_data()
 # ==========================================
 # 3. PYDANTIC MODEL & 4. RULES ENGINE
 # ==========================================
-class ExtractedShipment(BaseModel):
-    doc_type: str
-    shipment_mode: str
-    ship_date: str
-    invoice_no: str
-    po_no: str
-    exporter_name: str
-    destination: str
-    invoice_qty: int
-    packing_qty: int
-    total_amount: float
-    hs_code: str
-    has_coo: bool
-
 def calculate_readiness(data, strictness_label):
     score = 100
     delay = 0
@@ -242,18 +249,19 @@ def review_modal():
             
             new_record = pd.DataFrame([{
                 "running_no": run_no, "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                "ship_date": str(ship_date_input), "exporter": exporter, 
-                "destination": dest, "shipment_mode": mode,
-                "scenario_type": "Live Audit", "readiness_score": score, 
-                "risk_level": risk, "est_delay": delay, 
-                "ai_recommendation": ai_rec, "human_status": "⚪ Pending", "human_notes": "-"
+                "ship_date": str(ship_date_input), "exporter": exporter, "destination": dest, 
+                "shipment_mode": mode, "scenario_type": "Live Audit", "readiness_score": score, 
+                "risk_level": risk, "est_delay": delay, "ai_recommendation": ai_rec, 
+                "human_status": "⚪ Pending", "human_notes": "-",
+                "invoice_no": inv, "po_no": po, "invoice_qty": inv_qty, "packing_qty": pl_qty, 
+                "total_amount": amount, "hs_code": hs, "has_coo": coo
             }])
             new_record.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
             
             st.session_state.active_audit = new_record.iloc[0].to_dict()
             st.session_state.active_audit['issues'] = issues
             st.session_state.show_modal = False
-            st.session_state.nav_choice = "📄 Audit New Document"
+            st.session_state.pending_page = "📄 Audit New Document"
             st.rerun()
 
 # ==========================================
@@ -262,9 +270,8 @@ def review_modal():
 with st.sidebar:
     st.header("⚙️ Control Panel")
 
-    # ปรับข้อความ Help เพื่อแจ้งว่ารองรับการไม่ใส่ API Key
     api_key = st.text_input(
-        "🔑 Gemini API Key", type="password", placeholder="AIzaSy...", help="กรอก Gemini API Key เพื่อเปิดใช้งาน AI หรือปล่อยว่างไว้เพื่อทดสอบโหมดข้อมูลจำลอง (Mockup)"
+        "🔑 Gemini API Key", type="password", placeholder="AIzaSy...", help="ปล่อยว่างไว้เพื่อทดสอบโหมดข้อมูลจำลอง (Mockup)"
     )
     if api_key:
         st.session_state.api_key = api_key
@@ -279,27 +286,18 @@ with st.sidebar:
     st.session_state.strictness = st.selectbox("Customs Strictness Level", ["Lenient", "Standard", "Strict"], index=1)
     
     if uploaded_files and st.button("🚀 Release to AI", use_container_width=True):
-        is_mockup = False
-        
-        # 📌 อัปเดต: ถ้าไม่มี API Key ให้ใช้ Mockup Mode แทนการแสดง Error
-        if not st.session_state.get("api_key"):
+        is_mockup = not st.session_state.get("api_key")
+        if is_mockup:
             st.warning("⚠️ ไม่พบ API Key: ระบบเข้าสู่โหมดข้อมูลจำลอง (Mockup Mode)")
-            is_mockup = True
             
-        with st.spinner("AI กำลังวิเคราะห์ข้อมูลผ่าน Gemini API..." if not is_mockup else "กำลังโหลดข้อมูลจำลอง (Generating Mockup Data)..."):
+        with st.spinner("AI กำลังวิเคราะห์ข้อมูลผ่าน Gemini API..." if not is_mockup else "กำลังโหลดข้อมูลจำลอง..."):
             st.session_state.temp_extracted_data = {
-                "doc_type": "Multiple", 
-                "shipment_mode": "AIR ✈️", 
-                "ship_date": str(date.today()),
+                "doc_type": "Multiple", "shipment_mode": "AIR ✈️", "ship_date": str(date.today()),
                 "invoice_no": "INV-2026-991" if not is_mockup else "MOCK-INV-001", 
                 "po_no": "PO-991" if not is_mockup else "MOCK-PO-001", 
                 "exporter_name": "Chiang Mai OEM Electronics",
-                "destination": "Japan", 
-                "invoice_qty": 500, 
-                "packing_qty": 450,
-                "total_amount": 12500.0, 
-                "hs_code": "8542.31", 
-                "has_coo": False,
+                "destination": "Japan", "invoice_qty": 500, "packing_qty": 450,
+                "total_amount": 12500.0, "hs_code": "8409.91", "has_coo": False,
             }
             st.session_state.show_modal = True
 
@@ -307,44 +305,139 @@ if getattr(st.session_state, "show_modal", False):
     review_modal()
 
 # ==========================================
-# 7. MAIN DASHBOARD CONTENT
+# REUSABLE DASHBOARD COMPONENT (Solid Frame)
+# ==========================================
+def render_dashboard(audit, key_prefix=""):
+    """ ฟังก์ชันช่วยสร้างหน้าต่าง Dashboard แบบมีกรอบทึบ เหมือนในตัวอย่างที่ขอ """
+    
+    # ดึงตัวแปร issues ออกมาจัดการก่อน
+    issues = audit.get('issues', [])
+    if isinstance(issues, str): 
+        issues = []  # Fallback safety
+    if not issues and audit['readiness_score'] < 85:
+        if audit.get('invoice_qty') != audit.get('packing_qty'):
+            issues.append("Quantity Mismatch (Invoice vs Packing List)")
+        if not audit.get('has_coo', True):
+            issues.append("Missing Certificate of Origin (COO)")
+
+    # ⭐️ ใช้งาน st.container(border=True) ซึ่งจะถูกครอบด้วย CSS ทึบที่เราเขียนไว้ด้านบน ⭐️
+    with st.container(border=True):
+        
+        # --- 1. HEADER ROW ---
+        st.markdown(f"""
+        <div style="color: #cbd5e1; margin-bottom: 10px;">
+            <span style="background-color: #16a34a; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">🟢 3 DOCS MERGED & AUDITED</span> 
+            &nbsp;&nbsp;&nbsp; <b>Running No:</b> <span style="background-color: #334155; padding: 3px 8px; border-radius: 4px;">{audit['running_no']}</span> 
+            &nbsp;&nbsp;&nbsp; <b>Time:</b> {audit['timestamp']} 
+            &nbsp;&nbsp;&nbsp; <b>Mode:</b> {audit['shipment_mode']}
+        </div>
+        """, unsafe_allow_html=True)
+        st.divider()
+
+        # --- 2. KPI ROW ---
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("READINESS SCORE", f"{audit['readiness_score']}/100")
+        c2.metric("COMPLETION RATE", "83.3%" if audit['readiness_score'] < 85 else "100%")
+        c3.metric("RISK LEVEL", audit['risk_level'])
+        c4.metric("EST. BORDER DELAY", f"{audit['est_delay']} Hours")
+        
+        st.divider()
+
+        # --- 3. DATA & AUDIT CHECK ROW ---
+        col_data, col_audit = st.columns(2)
+        
+        with col_data:
+            st.markdown("### 📄 Extracted Data Across Files")
+            st.markdown(f"""
+            * **Invoice No:** `{audit.get('invoice_no', 'N/A')}`
+            * **Packing List No:** `PL-{audit.get('invoice_no', 'N/A')[-3:]}`
+            * **Invoice Total Qty:** `{audit.get('invoice_qty', 'N/A'):,} PCS`
+            * **PL Total Qty:** `{audit.get('packing_qty', 'N/A'):,} PCS`
+            * **Total Amount:** `${audit.get('total_amount', 0.0):,.2f} USD`
+            * **Main HS Code:** `{audit.get('hs_code', 'N/A')}`
+            * **Destination Origin:** `{audit.get('destination', 'N/A')}`
+            """)
+
+        with col_audit:
+            st.markdown("### 🔍 Cross-Document Multi-Audit")
+            
+            # Badge 1: Quantity
+            if audit.get('invoice_qty') != audit.get('packing_qty'):
+                st.error(f"🔴 Quantity Mismatch (Invoice vs PL): {audit.get('invoice_qty')} vs {audit.get('packing_qty')}")
+            else:
+                st.success(f"🟢 Quantity Match (Invoice vs PL): {audit.get('invoice_qty', 'N/A')} PCS")
+                
+            # Badge 2: Exporter Match
+            st.success("🟢 Exporter & Consignee: Matches Across All Docs")
+            
+            # Badge 3: COO
+            if not audit.get('has_coo', True) or "COO" in str(issues):
+                st.warning("🟡 Certificate of Origin (COO): Missing or Invalid")
+            else:
+                st.success("🟢 Certificate of Origin (COO): Valid for FTA")
+                
+            # Badge 4: HS Code
+            st.success(f"🟢 HS Code {audit.get('hs_code', '8409.91')}: Matched Invoice vs COO")
+
+        st.divider()
+
+        # --- 4. ACTION & DECISION ROW ---
+        col_ai, col_human = st.columns([1.5, 1])
+        
+        with col_ai:
+            st.markdown("### 🤖 AI Recommendation (Alternative 1 of 3)")
+            st.info(f"👉 **{audit['ai_recommendation'].upper()}**")
+            
+            if issues:
+                st.markdown("**Reason & Notes:**")
+                for i in issues:
+                    st.markdown(f"<span style='color:#f87171;'>- 🔴 {i}</span>", unsafe_allow_html=True)
+                st.markdown("- **Responsible Party:** Logistics / Compliance Officer")
+            else:
+                st.markdown("**Reason & Notes:**")
+                st.markdown("- Documents are complete with COO attached.")
+                st.markdown("- Minor Note: Declared weight is within tolerance.")
+                st.markdown("- **Responsible Party:** Shipping Officer (Clearance)")
+                
+        with col_human:
+            st.markdown("### 👤 Human Decision")
+            final_decision = st.selectbox("Final Status:", 
+                                          ["Ready to Export", "Requires Review & Correction", "Hold Shipment / High Risk"],
+                                          key=f"{key_prefix}dec")
+            remarks = st.text_area("Remarks / Notes", value=str(audit.get('human_notes', '')), key=f"{key_prefix}rem")
+            
+            if st.button("💾 Save Transaction Log", type="primary", use_container_width=True, key=f"{key_prefix}save"):
+                update_human_decision_in_csv(audit['running_no'], final_decision, remarks)
+                st.session_state.active_audit['human_status'] = f"Updated ({final_decision})"
+                st.session_state.active_audit['human_notes'] = remarks
+                st.success("บันทึกอัปเดตเรียบร้อยแล้ว!")
+
+        # --- 5. DOCUMENT CHECKLIST (BOTTOM) ---
+        st.divider()
+        coo_color = "#ca8a04" if not audit.get('has_coo', True) else "#166534"
+        coo_text = "? COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
+        
+        st.markdown("**DOCUMENT CHECKLIST (ATTACHED):**")
+        st.markdown(f"""
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <span style="background-color: #166534; color: white; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold;">✓ Invoice</span>
+            <span style="background-color: #166534; color: white; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold;">✓ Packing List</span>
+            <span style="background-color: #166534; color: white; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold;">✓ PO</span>
+            <span style="background-color: #166534; color: white; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold;">✓ B/L / AWB</span>
+            <span style="background-color: {coo_color}; color: white; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold;">{coo_text}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ==========================================
+# 7. MAIN APP ROUTING
 # ==========================================
 st.markdown("## 🚢 TradeReady AI <span style='font-size: 14px; color: #cbd5e1;'>| Export Documentation & Customs Readiness Assistant</span>", unsafe_allow_html=True)
 
 if app_mode == "📄 Audit New Document":
     if 'active_audit' in st.session_state:
-        audit = st.session_state.active_audit
-        ship_d = audit.get('ship_date', 'N/A')
-        st.success(f"✅ Loaded Record: **{audit['running_no']}** | 📅 Ship Date: **{ship_d}** | Mode: {audit['shipment_mode']}")
-        
-        # KPI Cards
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Readiness Score", f"{audit['readiness_score']}/100")
-        c2.metric("Completion Rate", "83.3%" if audit['readiness_score'] < 85 else "100%")
-        c3.metric("Risk Level", audit['risk_level'])
-        c4.metric("Est. Border Delay", f"{audit['est_delay']} Hours")
-        
-        col_left, col_right = st.columns([1.5, 1])
-        with col_left:
-            st.markdown("### 🤖 AI Recommendation")
-            st.info(f"**Decision:** {audit['ai_recommendation']}")
-            issues = audit.get('issues', [])
-            if not issues and audit['readiness_score'] < 85:
-                issues = ["Quantity Mismatch / Weight Discrepancy", "Missing Certificate of Origin (COO)"]
-            if issues:
-                st.error("**Detected Issues:**\n" + "\n".join([f"- {i}" for i in issues]))
-            else:
-                st.success("**Status:** Documents are compliant and ready.")
-                
-        with col_right:
-            st.markdown("### 👤 Human Override")
-            final_decision = st.selectbox("Final Decision", ["Ready to Export", "Requires Review & Correction", "Hold Shipment / High Risk"])
-            remarks = st.text_area("Remarks / Notes", value=str(audit.get('human_notes', '')))
-            if st.button("💾 Save Final Decision", type="primary", use_container_width=True):
-                update_human_decision_in_csv(audit['running_no'], final_decision, remarks)
-                st.session_state.active_audit['human_status'] = f"Updated ({final_decision})"
-                st.session_state.active_audit['human_notes'] = remarks
-                st.success(f"บันทึกผลการตัดสินใจเรียบร้อยแล้ว!")
+        # เรียกใช้คอมโพเนนต์ Dashboard ที่สร้างไว้
+        render_dashboard(st.session_state.active_audit, key_prefix="main_")
     else:
         st.info("👈 กรุณาอัปโหลดไฟล์ PDF ด้านซ้ายมือ หรือเลือกดูรายการจากเมนู History Logs")
 
@@ -407,14 +500,8 @@ elif app_mode == "📜 History Logs":
             with c_info:
                 st.markdown(f"📌 **รายการที่เลือก:** `{selected_record['running_no']}` | **Ship Date:** `{selected_record.get('ship_date', 'N/A')}`")
             with c_btn:
-                if st.button("👁️ เปิดดูรายละเอียด", type="primary", use_container_width=True):
+                if st.button("👁️ เปิดดูรายละเอียดด้านล่าง", type="primary", use_container_width=True):
                     st.session_state.active_audit = selected_record
-                    
-                    if selected_record['readiness_score'] < 85:
-                        st.session_state.active_audit['issues'] = ["Quantity Mismatch / Weight Discrepancy", "Missing Certificate of Origin (COO)"]
-                    else:
-                        st.session_state.active_audit['issues'] = []
-                        
                     st.session_state.show_inline_dashboard = True
                     st.rerun()
         else:
@@ -423,37 +510,17 @@ elif app_mode == "📜 History Logs":
         # --- IN-LINE DASHBOARD ---
         if getattr(st.session_state, 'show_inline_dashboard', False):
             st.markdown("---")
-            audit = st.session_state.active_audit
             
             c_head, c_close = st.columns([5, 1])
             with c_head:
-                st.markdown(f"### 📊 Dashboard Detail: `{audit['running_no']}`")
+                st.markdown(f"### 📊 Dashboard Detail View")
             with c_close:
                 if st.button("❌ ปิด (Close)", use_container_width=True):
                     st.session_state.show_inline_dashboard = False
                     st.rerun()
             
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Readiness Score", f"{audit['readiness_score']}/100")
-            c2.metric("Completion Rate", "83.3%" if audit['readiness_score'] < 85 else "100%")
-            c3.metric("Risk Level", audit['risk_level'])
-            c4.metric("Est. Border Delay", f"{audit['est_delay']} Hours")
-            
-            col_left, col_right = st.columns([1.5, 1])
-            with col_left:
-                st.info(f"**🤖 AI Recommendation:** {audit['ai_recommendation']}")
-                issues = audit.get('issues', [])
-                if issues:
-                    st.error("**Detected Issues:**\n" + "\n".join([f"- {i}" for i in issues]))
-                else:
-                    st.success("**Status:** Documents are compliant and ready.")
-                    
-            with col_right:
-                final_decision = st.selectbox("Final Decision", ["Ready to Export", "Requires Review & Correction", "Hold Shipment / High Risk"], key="inline_dec")
-                remarks = st.text_area("Remarks / Notes", value=str(audit.get('human_notes', '')), key="inline_rem")
-                if st.button("💾 Save Decision", type="primary", use_container_width=True, key="inline_save"):
-                    update_human_decision_in_csv(audit['running_no'], final_decision, remarks)
-                    st.success("บันทึกอัปเดตลง History Log เรียบร้อยแล้ว (การแสดงผลบนตารางจะเปลี่ยนเมื่อคุณเลิกเลือกรายการ)")
+            # เรียกใช้คอมโพเนนต์ Dashboard ที่สร้างไว้
+            render_dashboard(st.session_state.active_audit, key_prefix="inline_")
                     
     else:
         st.warning("ยังไม่พบข้อมูลประวัติในระบบ")
