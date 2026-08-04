@@ -42,7 +42,7 @@ st.markdown(
     [data-testid="stMain"], section.main {{
         background-color: rgba(18, 58, 98, 0.70) !important;
         backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(8px);
     }}
     
     [data-testid="stSidebar"] {{
