@@ -6,6 +6,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
+
 # ==========================================
 # 0. PAGE CONFIGURATION (ต้องวางไว้ตรงนี้เลยครับ เป็นคำสั่งแรกของ Streamlit)
 # ==========================================
@@ -14,6 +15,45 @@ st.set_page_config(
     layout="wide", # 👈 ตัวนี้แหละครับที่จะทำให้จอขยายกว้างเต็มพื้นที่
     initial_sidebar_state="expanded"
 )
+
+# ==========================================
+# 0.1 CUSTOM BACKGROUND IMAGE (ส่วนที่เพิ่มใหม่)
+# ==========================================
+# 🔗 เปลี่ยน URL ตรงนี้เป็นลิงก์รูปภาพที่คุณต้องการ
+background_image_url = "https://images.unsplash.com/photo-1494412519320-aa613dfb7738?q=80&w=2070&auto=format&fit=crop"
+
+st.markdown(
+    f"""
+    <style>
+    /* ตั้งค่ารูปพื้นหลังให้เต็มจอ .stApp */
+    .stApp {{
+        background-image: url("{background_image_url}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    
+    /* เพิ่มพื้นหลังสีกรมท่าโปร่งใสทับส่วนเนื้อหา เพื่อให้ตัวอักษรยังคงอ่านง่าย */
+    .block-container {{
+        background-color: rgba(18, 58, 98, 0.85); /* #123A62 ที่มีความโปร่งใส 85% */
+        padding-top: 3rem;
+        padding-bottom: 3rem;
+        padding-left: 3rem;
+        padding-right: 3rem;
+        border-radius: 15px;
+        margin-top: 2rem;
+    }}
+    
+    /* ปรับขนาดฟอนต์ในตาราง (ตามที่คุยกันก่อนหน้า) */
+    .stDataFrame {{
+        font-size: 16px;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # ==========================================
 # 1. SETUP & CONSTANTS
 # ==========================================
@@ -179,7 +219,7 @@ def review_modal():
 # 6. MAIN UI & SIDEBAR
 # ==========================================
 st.title("🚢 TradeReady AI")
-st.caption("Export Documentation & Customs Readiness Assistant (Minimal Theme)")
+st.caption("Export Documentation & Customs Readiness Assistant")
 
 # --- SIDEBAR ---
 with st.sidebar:
