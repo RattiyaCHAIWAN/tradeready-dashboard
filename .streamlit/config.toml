@@ -1,6 +1,6 @@
 [theme]
 primaryColor = "#007BFF"                # สีน้ำเงินสว่าง (สำหรับปุ่ม)
-backgroundColor = "#FFFFFF"             # สีพื้นหลังหลัก
+backgroundColor = "#000000"             # สีพื้นหลังหลัก
 secondaryBackgroundColor = "#0B2A4C"    # สีพื้นหลังแถบซ้าย (เข้มขึ้นเล็กน้อย)
 textColor = "#000000"                   # สีตัวอักษรหลัก (ขาว)
 font = "Aptos Narrow"
