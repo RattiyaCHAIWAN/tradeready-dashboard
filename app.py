@@ -63,7 +63,7 @@ st.markdown(
         padding-right: 2.5rem !important;
     }}
     
-    /* 🌟 Enterprise Card Container Styling (Glassmorphism + Deep Contrast) 🌟 */
+    /* Enterprise Card Container Styling */
     [data-testid="stVerticalBlockBorderWrapper"] {{
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.90) 0%, rgba(15, 23, 42, 0.95) 100%) !important; 
         border: 1px solid rgba(59, 130, 246, 0.3) !important; 
@@ -72,7 +72,6 @@ st.markdown(
         box-shadow: 0px 12px 40px rgba(0, 0, 0, 0.6) !important; 
     }}
 
-    /* ปรับตัวอักษรในกรอบให้คมชัด สไตล์โมเดิร์น */
     [data-testid="stVerticalBlockBorderWrapper"] h3 {{
         color: #f8fafc !important;
         font-weight: 700 !important;
@@ -404,7 +403,24 @@ def render_dashboard(audit, key_prefix=""):
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # --- 3. DATA & AUDIT CHECK ROW ---
+        # --- ⭐️ 3. DOCUMENT CHECKLIST (ย้ายมาไว้ตรงนี้ พร้อมกรอบดีไซน์สวยงาม) ⭐️ ---
+        coo_color = "#d97706" if not audit.get('has_coo', True) else "#16a34a"
+        coo_text = "❌ COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
+        
+        st.markdown(f"""
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 1.5rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);">
+            <div style="color: #38bdf8; font-size: 13px; font-weight: 700; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.05em;">📁 Document Checklist (Attached)</div>
+            <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+                <span style="background-color: #16a34a; color: white; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ Invoice</span>
+                <span style="background-color: #16a34a; color: white; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ Packing List</span>
+                <span style="background-color: #16a34a; color: white; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ PO</span>
+                <span style="background-color: #16a34a; color: white; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ B/L / AWB</span>
+                <span style="background-color: {coo_color}; color: white; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">{coo_text}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # --- 4. DATA & AUDIT CHECK ROW ---
         col_data, col_audit = st.columns(2)
         
         with col_data:
@@ -437,7 +453,7 @@ def render_dashboard(audit, key_prefix=""):
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # --- 4. ACTION & DECISION ROW ---
+        # --- 5. ACTION & DECISION ROW ---
         col_ai, col_human = st.columns([1.4, 1])
         
         with col_ai:
@@ -471,22 +487,6 @@ def render_dashboard(audit, key_prefix=""):
                 st.session_state.active_audit['human_status'] = f"Updated ({final_decision})"
                 st.session_state.active_audit['human_notes'] = remarks
                 st.success("บันทึกอัปเดตเรียบร้อยแล้ว!")
-
-        # --- 5. DOCUMENT CHECKLIST (BOTTOM - ขยายป้ายให้ใหญ่สะดุดตา) ---
-        st.markdown("<br>", unsafe_allow_html=True)
-        coo_color = "#d97706" if not audit.get('has_coo', True) else "#16a34a"
-        coo_text = "❌ COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
-        
-        st.markdown("**DOCUMENT CHECKLIST (ATTACHED):**")
-        st.markdown(f"""
-        <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px;">
-            <span style="background-color: #16a34a; color: white; padding: 12px 20px; border-radius: 8px; font-size: 15px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ Invoice</span>
-            <span style="background-color: #16a34a; color: white; padding: 12px 20px; border-radius: 8px; font-size: 15px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ Packing List</span>
-            <span style="background-color: #16a34a; color: white; padding: 12px 20px; border-radius: 8px; font-size: 15px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ PO</span>
-            <span style="background-color: #16a34a; color: white; padding: 12px 20px; border-radius: 8px; font-size: 15px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">✓ B/L / AWB</span>
-            <span style="background-color: {coo_color}; color: white; padding: 12px 20px; border-radius: 8px; font-size: 15px; font-weight: bold; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">{coo_text}</span>
-        </div>
-        """, unsafe_allow_html=True)
 
 # ==========================================
 # 7. MAIN APP ROUTING
