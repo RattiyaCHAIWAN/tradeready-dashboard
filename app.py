@@ -357,7 +357,23 @@ def render_dashboard(audit, key_prefix=""):
         </div>
         """, unsafe_allow_html=True)
         st.divider()
-
+        
+        # --- 5. DOCUMENT CHECKLIST (BOTTOM) ---
+        st.divider()
+        coo_color = "#ca8a04" if not audit.get('has_coo', True) else "#166534"
+        coo_text = "❌ COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
+        
+        st.markdown("**DOCUMENT CHECKLIST (ATTACHED):**")
+        st.markdown(f"""
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
+            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ Invoice</span>
+            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ Packing List</span>
+            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ PO</span>
+            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ B/L / AWB</span>
+            <span style="background-color: {coo_color}; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">{coo_text}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
         # --- 2. KPI ROW ---
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("READINESS SCORE", f"{audit.get('readiness_score', 0)}/100")
@@ -435,21 +451,7 @@ def render_dashboard(audit, key_prefix=""):
                 st.session_state.active_audit['human_notes'] = remarks
                 st.success("บันทึกอัปเดตเรียบร้อยแล้ว!")
 
-        # --- 5. DOCUMENT CHECKLIST (BOTTOM) ---
-        st.divider()
-        coo_color = "#ca8a04" if not audit.get('has_coo', True) else "#166534"
-        coo_text = "❌ COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
-        
-        st.markdown("**DOCUMENT CHECKLIST (ATTACHED):**")
-        st.markdown(f"""
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
-            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ Invoice</span>
-            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ Packing List</span>
-            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ PO</span>
-            <span style="background-color: #166534; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">✓ B/L / AWB</span>
-            <span style="background-color: {coo_color}; color: white; padding: 10px 18px; border-radius: 6px; font-size: 15px; font-weight: bold; box-shadow: 0px 2px 5px rgba(0,0,0,0.2);">{coo_text}</span>
-        </div>
-        """, unsafe_allow_html=True)
+
 
 # ==========================================
 # 6. MAIN APP ROUTING
