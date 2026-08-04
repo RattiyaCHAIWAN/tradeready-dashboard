@@ -40,9 +40,9 @@ st.markdown(
     }}
     
     [data-testid="stMain"], section.main {{
-        background-color: rgba(255, 255, 255, 0.70) !important;
+        background-color: rgba(18, 58, 98, 0.70) !important;
         backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(4px);
     }}
     
     [data-testid="stSidebar"] {{
@@ -65,7 +65,7 @@ st.markdown(
     
     /* กรอบข้อมูลหลักเป็นพื้นหลังสีขาว ตัวหนังสือสีเข้ม คมชัดเด่นตา */
     [data-testid="stVerticalBlockBorderWrapper"] {{
-        background-color: #FFFFFF !important; 
+        background-color: #ffffff !important; 
         border: 2px solid #cbd5e1 !important; 
         border-radius: 12px !important;
         padding: 1.5rem !important;
