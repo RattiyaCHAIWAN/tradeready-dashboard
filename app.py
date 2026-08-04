@@ -42,7 +42,7 @@ st.markdown(
     
     /* 2. Dark Overlay for Main Area & Sidebar */
     [data-testid="stMain"], section.main {{
-        background-color: rgba(18, 58, 98, 1) !important;
+        background-color: rgba(18, 58, 98, 0.85) !important;
         backdrop-filter: blur(4px);
         -webkit-backdrop-filter: blur(4px);
     }}
@@ -73,7 +73,7 @@ st.markdown(
         border: 2px solid #CBD5E1 !important; 
         border-radius: 12px !important;
         padding: 1rem !important;
-        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.35) !important; 
+        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.9) !important; 
     }}
 
     /* 4. Text & Typography Inside White Card */
