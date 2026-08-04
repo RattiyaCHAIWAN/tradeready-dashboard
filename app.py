@@ -69,7 +69,7 @@ st.markdown(
         border: 2px solid #cbd5e1 !important; 
         border-radius: 12px !important;
         padding: 1.5rem !important;
-        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3) !important; 
+        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.8) !important; 
     }}
 
     [data-testid="stVerticalBlockBorderWrapper"] h3, 
