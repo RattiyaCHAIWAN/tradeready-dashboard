@@ -31,7 +31,6 @@ background_image_url = "https://images.unsplash.com/photo-1578575437130-527eed3a
 st.markdown(
     f"""
     <style>
-    /* 1. ตั้งค่ารูปพื้นหลังให้เต็มจอหลัก (.stApp) */
     .stApp {{
         background-image: url("{background_image_url}");
         background-size: cover;
@@ -40,14 +39,12 @@ st.markdown(
         background-attachment: fixed;
     }}
     
-    /* 2. สีกรมท่าโปร่งใสคลุมเต็มพื้นที่หน้าจอหลัก (Main Area) */
     [data-testid="stMain"], section.main {{
         background-color: rgba(18, 58, 98, 0.70) !important;
         backdrop-filter: blur(4px);
         -webkit-backdrop-filter: blur(4px);
     }}
     
-    /* 3. ปรับ Sidebar ให้โปร่งแสง และทำเอฟเฟกต์กระจกฝ้า (Frosted Glass) */
     [data-testid="stSidebar"] {{
         background-color: rgba(18, 58, 98, 0.65) !important;
         backdrop-filter: blur(8px) !important;
@@ -58,7 +55,6 @@ st.markdown(
         background-color: transparent !important;
     }}
 
-    /* 4. ปรับแต่งฟอนต์ และลดช่องว่าง (Padding/Margin) */
     .block-container {{
         background-color: transparent !important;
         padding-top: 1.5rem !important; 
@@ -67,7 +63,6 @@ st.markdown(
         padding-right: 2rem !important;
     }}
     
-    /* 5. CSS สำหรับกรอบ Dashboard พื้นทึบให้ข้อมูลลอยเด่นขึ้นมา */
     [data-testid="stVerticalBlockBorderWrapper"] {{
         background-color: rgba(15, 23, 42, 0.95) !important; 
         border: 1px solid #3b82f6 !important; 
@@ -112,8 +107,21 @@ STRICTNESS_MULTIPLIER = {"Lenient": 0.5, "Standard": 1.0, "Strict": 1.5}
 MODE_MULTIPLIER = {"AIR ✈️": 0.5, "TRUCK 🚛": 1.0, "SEA 🚢": 1.5}
 
 # ==========================================
-# 2. DATA GENERATOR & UPDATER
+# 2. DATA GENERATOR & AUTO-HEAL SYSTEM
 # ==========================================
+def validate_and_repair_csv():
+    """ 🛠️ ระบบ Auto-Heal: ตรวจสอบว่า CSV เป็นเวอร์ชันเก่าหรือพังหรือไม่ ถ้าพังให้ลบทิ้ง """
+    if os.path.exists(HISTORY_FILE):
+        try:
+            df = pd.read_csv(HISTORY_FILE)
+            required_cols = ["invoice_no", "po_no", "invoice_qty", "ship_date"]
+            # ถ้าคอลัมน์เวอร์ชันใหม่มีไม่ครบ แสดงว่าเป็นไฟล์เก่า ให้ลบทิ้ง
+            if not all(col in df.columns for col in required_cols):
+                os.remove(HISTORY_FILE)
+        except Exception:
+            # ถ้าเกิด ParserError (พัง) ให้ลบทิ้งเลย
+            os.remove(HISTORY_FILE)
+
 def generate_sample_data():
     if os.path.exists(HISTORY_FILE):
         return
@@ -167,6 +175,8 @@ def update_human_decision_in_csv(running_no, decision, notes):
             df.loc[mask, "human_notes"] = notes
             df.to_csv(HISTORY_FILE, index=False)
 
+# เรียกใช้ระบบซ่อมแซมและสร้างข้อมูลจำลอง
+validate_and_repair_csv()
 generate_sample_data()
 
 # ==========================================
@@ -310,7 +320,6 @@ def render_dashboard(audit, key_prefix=""):
     if isinstance(issues, str): 
         issues = [] 
     
-    # ดึงค่าออกมาแปลงเป็นตัวเลขให้ปลอดภัยก่อนจัด Format (ป้องกัน ValueError)
     try:
         inv_qty_val = int(float(audit.get('invoice_qty', 0)))
         inv_qty_str = f"{inv_qty_val:,}"
@@ -455,8 +464,6 @@ elif app_mode == "📜 History Logs":
     
     if os.path.exists(HISTORY_FILE):
         df = pd.read_csv(HISTORY_FILE)
-        if "ship_date" not in df.columns:
-            df["ship_date"] = "2026-08-01"
             
         enable_date_filter = st.toggle("📅 Enable Ship Date Filter (กรองเฉพาะวันส่งออก)", value=False)
         
