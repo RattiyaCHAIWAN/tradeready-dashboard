@@ -403,7 +403,7 @@ def render_dashboard(audit, key_prefix=""):
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # --- ⭐️ 3. DOCUMENT CHECKLIST (ย้ายมาไว้ตรงนี้ พร้อมกรอบดีไซน์สวยงาม) ⭐️ ---
+        # --- 3. DOCUMENT CHECKLIST (ATTACHED) ---
         coo_color = "#d97706" if not audit.get('has_coo', True) else "#16a34a"
         coo_text = "❌ COO (Missing)" if not audit.get('has_coo', True) else "✓ COO (Verified)"
         
@@ -425,8 +425,12 @@ def render_dashboard(audit, key_prefix=""):
         
         with col_data:
             st.markdown("### 📄 Extracted Data Across Files")
+            # ⭐️ เพิ่มรายละเอียด Extracted Data ให้แน่นและครอบคลุมยิ่งขึ้น (เพิ่ม Ship Date, PO No, Exporter, ฯลฯ) ⭐️
             st.markdown(f"""
+            * **Ship Date (ETD):** `{audit.get('ship_date', 'N/A')}`
+            * **Exporter:** `{audit.get('exporter', 'N/A')}`
             * **Invoice No:** `{inv_no}`
+            * **PO No:** `{audit.get('po_no', 'N/A')}`
             * **Packing List No:** `PL-{pl_no_suffix}`
             * **Invoice Total Qty:** `{inv_qty_str} PCS`
             * **PL Total Qty:** `{pl_qty_str} PCS`
